@@ -1,0 +1,43 @@
+name: CI
+
+# PRごとの必須チェック。--strict ビルドが警告ゼロで通ることを検査する。
+# deploy-pages.yml(push時の実デプロイ)とは完全に独立。
+#
+# lychee 等のリンクチェックは今回(issue #2)は入れない。ai-kotohajime にはあるが
+# issue #2 の受け入れ条件(mkdocs build --strict が警告ゼロで通ること)の対象外であり、
+# スコープを広げないため。将来、公開ページの本数が増えた段階で追加する余地はある。
+on:
+  # base ブランチを絞らない。issue #1〜#3 はスタックしたPRで運用しており、base が
+  # main とは限らない(feat/phase0-documents や feat/phase0-mkdocs など)。
+  # base を限定すると main 以外を base とするPRでCIが起動しなくなるため。
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 必須。git-revision-date-localized プラグインは各ページの最終更新日時を
+          # git履歴から取得する。shallow clone(既定の fetch-depth: 1)だと履歴が無く、
+          # 日時が正しく取れずに現在時刻へフォールバックする(全ページが「今」の更新日時になる)。
+          # このフォールバックは print による情報表示であり MkDocs の WARNING 系統に乗らないため
+          # --strict では検出されない。つまり fetch-depth: 0 を外してもCIは緑のまま
+          # 日時だけが静かに壊れる。だから明示的に必要(deploy-pages.yml と同じ理由)。
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - run: mkdocs build --strict

@@ -1,0 +1,10 @@
+/*
+ * 追加スタイル用のプレースホルダ。issue #2 時点では独自スタイルの追加なし。
+ * 今後ハードコード色を足す場合は、ダーク(slate)配色での上書きも必ず併せて書くこと
+ * (ライトのみで色を固定すると、prefers-color-scheme: dark 環境で可読性が崩れる。
+ * ai-kotohajime で実際に踏んだ罠)。
+ *
+ * 例:
+ * .my-note { background-color: #fff8e1; }
+ * [data-md-color-scheme="slate"] .my-note { background-color: #3a3319; }
+ */

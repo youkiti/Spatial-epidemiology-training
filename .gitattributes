@@ -1,0 +1,5 @@
+# このリポジトリはローカルでは core.autocrlf=true の Windows 環境で編集されており、
+# issue #1 のコミット時に「LF will be replaced by CRLF」警告が出ている。CI(GitHub Actions)は
+# Ubuntu ランナーで動くため、改行コードが環境によって暗黙に変わるとビルド結果の差異や
+# 意図しない diff の原因になる。全テキストファイルの改行コードを LF に固定して揃える。
+* text=auto eol=lf
