@@ -11,12 +11,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 documents/       設計の正本3文書。実装より先にここを読む
 docs/            MkDocs のサイトソース。ここに置いたものは公開される
-  concepts/      概念パート6章（本文はプレースホルダ。issue #10〜#15 で執筆）
+  concepts/      概念パート6章（issue #10〜#15 で執筆済み。各章に自己チェック3問＋章末クイズ10問。章4のみ12問）
   handson/       Rハンズオン4本（プレースホルダ）
   assets/js/     クイズエンジン（storage.js → quiz.js → progress.js）
-  assets/data/   クイズJSON（章1のものは engine 検証用の仮設問。issue #10 で差し替え）
+  assets/data/   クイズJSON（全6章分。`quiz-chN-selfcheck.json` と `quiz-chN.json`）
   memo.md        ユーザーとの対話ログ。exclude_docs でサイトからは除外している
-scripts/         quiz_lint.py（作問の機械チェック）
+scripts/         quiz_lint.py（作問の機械チェック）、simulate_spatial_data.py と
+                 verify_simulation.py（合成データの生成と検証。issue #6）
+data/simulated/  上記生成器の出力CSV（合成データなのでコミットしている）
 overrides/       404.html のテーマオーバーライド
 ```
 
@@ -56,6 +58,12 @@ python scripts/quiz_lint.py    # クイズJSONの testwiseness cue 検査
 - **`extra.css` にハードコード色を足すときは、ダーク（slate）配色の上書きも必ず併せて書く。** 特に文字色は暗背景でコントラストが落ちる
 - 404 は `docs/404.md` では機能しない。テーマの静的テンプレート `404.html` が常に優先され、GitHub Pages はルートの `404.html` しか配信しない。`overrides/404.html` のリンクは**ルート相対**（`/Spatial-epidemiology-training/...`）で書く
 - 作問の lint 閾値を変えるときは、`documents/作問ガイドライン.md` §3 と `scripts/quiz_lint.py` を**同時に**改訂する
+- **ページ間リンクはソース相対の `.md` で書く**（`ch2-spatial-weights.md`、`../handson/03-maup.md`）。ディレクトリURL形式（`../ch2-spatial-weights/`）はブラウザ上は動くが MkDocs がリンクとして解決できず、`INFO ... unrecognized relative link` が出るだけで **`--strict` でも落ちない**。リンク切れを検出できない状態になる
+- **`pymdownx.arithmatex` は有効化していない**（`mkdocs.yml` のコメント参照）。`$W$` のような LaTeX 記法はドル記号ごとそのまま表示される。数式は書かず、`W` やコードブロックで表現する
+- **inline SVG で `currentColor` の塗りの上に `currentColor` の文字を置くとき、`fill-opacity` は 0.45 まで**。それ以上だと地の色と文字色が同一になり、ライト/ダーク両方で**文字が消える**。濃淡は 0.05〜0.45 の範囲で付ける（`extra.css` を触らずにテーマ追従させるための制約とセット）
+- **クイズJSONの文字列に Markdown 記法を書かない。** `quiz.js` は JSON 由来の文字列を `textContent` で DOM に入れる（JSON由来の文字列をHTMLとして解釈させないための意図的な設計。`quiz.js` 冒頭の実装方針に明記されている）ため、`Gi\*` のエスケープやバックティックが**そのまま文字として表示される**。本文（Markdown）では `Gi\*` が正しく、クイズJSONでは `Gi*` が正しい
+- **`<figure>` 内の inline SVG には `width` 属性を必ず書く。** Material の `.md-typeset figure` は `width: fit-content` であり、SVG に `width` が無いと `width:auto` が「親幅の100%」に解決され、親が fit-content なので循環して 0×0 になり描画されない。figcaption があるとそのテキストが figure に幅を与えるため偶然描画できてしまい、気づきにくい。`mkdocs build --strict` でも `quiz_lint.py` でも検出できない
+- **`fill="currentColor"` + `fill-opacity` の塗りは、ダークテーマで濃淡が反転する。** ライトテーマでは値が高いほど濃く見えるが、ダークでは値が高いほど明るく見える。図の凡例やキャプションに「濃い/薄い」と書くとダークで読む読者には逆の意味になるため、「塗りが強い/弱い」のような極性に依存しない語を使う。これも `mkdocs build --strict` や `quiz_lint.py` では検出できない
 
 ## プロジェクトの目的
 
@@ -121,6 +129,10 @@ R パッケージ:
 - **未導入**: `tmap`, `sfdep`, `leaflet`, `SpatialEpi`, `CARBayes`, `INLA`, `jpndistrict`, `NipponMap`
 
 Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test` / `localmoran` / `localG`）ので、段階1〜2 は追加インストールなしで書ける。CAR/BYM に進む時点で `CARBayes` か `INLA` の選択が必要。**`INLA` は CRAN ではなく専用リポジトリからの導入**で、読者に要求するハードルが `CARBayes` より高い。
+
+**`spdep::mat2listw()` はこの環境でプロセス終了時にクラッシュする。** R の出力自体は最後まで正常に出るが、終了時にスタックオーバーフローで異常終了する（Windows 終了コード 0xC00000FD、Git Bash 経由では 127）。行列サイズによらず再現し、`rm()` / `gc()` / `quit(status=0)` でも回避できないため、`Rscript foo.R && echo ok` が決して成功しない。**どうするか**: `nb` オブジェクトを隣接エッジ一覧から直接組み立てて `nb2listw()` に渡す（密な隣接行列を経由しない）。`scripts/verify_simulation.R` がその実装例。
+
+`scripts/verify_simulation.R` は R 4.5.2 / spdep 1.4.1 で実行・検証済み（2026-08-18）で、Python 版と出力が一致することを確認済み。
 
 **R側の依存マニフェスト（`renv.lock` 等）はまだ無い。** Rハンズオン（issue #17〜#20）に着手する時点で入れる。
 
