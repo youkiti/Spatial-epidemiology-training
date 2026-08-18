@@ -4,19 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## このリポジトリの現状
 
-**Phase0 と概念パート6章が完了（2026-08-18）。** 設計文書・サイト骨格・クイズエンジン・概念パート全6章が main に入り、GitHub Pages で公開されている。
+**Phase0・Phase1・Phase2 が完了（2026-08-19）。** 設計文書・サイト骨格・クイズエンジン・概念パート全6章・Phase1のデータ整備・引用の一次資料での裏取りが main に入り、GitHub Pages で公開されている。
 
 公開先: <https://youkiti.github.io/Spatial-epidemiology-training/>
 
-残っている issue は3系統。**着手前に必ず GitHub の issue 本文を読むこと**（受け入れ条件と cloud 可否がそこに書いてある）。
+**残っている open issue は Phase3 のハンズオン4本だけ**（#17〜#20）。**着手前に必ず GitHub の issue 本文を読むこと**（受け入れ条件と cloud 可否がそこに書いてある）。
 
-| 系統 | issue | この環境で動かせるか |
+| issue | 内容 | 依存 |
 |---|---|---|
-| Phase1 データ整備 | **完了。** #4・#5・#7・#8 に加え、#9（施設の二次医療圏割付、主系列の割付率85.9%）と #28（年齢階級別人口）も入った。詳細は下記「Phase1のデータ整備状況」 | 残作業なし |
-| Phase2 引用の裏取り | #16 実例論文2本の一次資料での確認 | 論文全文にアクセスできれば可 |
-| Phase3 ハンズオン | #17 Rmd 配管 → #18〜#20 | **不可**。R が要る。#17 が #18〜#20 の前提 |
+| #17 | Rmd レンダリング配管（Rmd → md + 図 → `docs/handson/`）、`renv.lock`、成果物の鮮度CIチェック | #2・#6 |
+| #18 | ハンズオン1〜2「地図 → Global Moran's I → LISA → Gi\*」 | #17 |
+| #19 | ハンズオン3「CAR / BYM」 | #18 |
+| #20 | ハンズオン4「MAUP の実演 — 都道府県 vs 二次医療圏」 | #18 |
 
-クラウドセッションで単独で進められるのは #16 だけ。
+依存は一直線で **#17 → #18 → (#19, #20)**。#19 と #20 は #18 が済めば並行できる。
+
+**4本とも `local-only`。R が要るため、クラウドセッションで進められる issue はもう無い。**
 
 ```
 documents/       設計の正本3文書。実装より先にここを読む
@@ -190,6 +193,8 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 
 **`spdep::poly2nb()` も同じくプロセス終了時に落ちる**（Git Bash 経由で終了コード 255）。`mat2listw()` と同種だが、今回は `poly2nb()` 自体がトリガー。実ポリゴンから隣接を導くのに `poly2nb()` は避けられないため、**呼び出しだけを子プロセスの `Rscript` に切り出し、結果をCSVに書かせてから親が読み戻す**のが回避策（`scripts/build_geo.R` が実装例）。**終了コードで成否を判定しないこと** — 代わりに (a) 出力先が毎回新しい tempdir か、(b) 子が完了マーカーを stdout に出したか、で判定する。ファイルの存在チェックだけだと、書き込み途中で切れたCSVを黙って読んでしまう。
 
+この制約は Phase3（issue #17〜#20）の Rmd に直接効く。**ハンズオンの Rmd から `poly2nb()` / `mat2listw()` を直接呼ばない**。`data/geo/adjacency_iryoken2.csv`（issue #4 で生成済みの queen contiguity エッジ一覧）を読んで `nb` を組み立て、`nb2listw()` に渡す構成にする（`scripts/verify_simulation.R` が組み立ての実装例）。読者の環境では `poly2nb()` が通る可能性はあるが、その場合でも**隣接の定義を再現可能な成果物として固定しておく方が教材として正しい**（章2の「『隣』を先に決める」と対応する）。
+
 **実ポリゴンを扱うときは `sf::sf_use_s2(FALSE)` が要る。** s2 有効のままだと `st_make_valid()` が一部ジオメトリを修復しきれず（実測: 新宮 3007）、`poly2nb()` がさらに強く落ちる。A38 由来の339区域では7件が `st_is_valid()` で不正、s2 を切れば `st_make_valid()` で全件修復できる。
 
 **`pip install -r requirements.txt` は Windows ローカルで失敗する。** `requirements.txt` に日本語コメントがあるため pip が locale（cp932）で読もうとして `UnicodeDecodeError`。**`PYTHONUTF8=1` を付ければ通る。** CI（ubuntu-latest）は UTF-8 locale なので起きない。**しかも pip が終了コード0を返すことがあり**、あとで `No module named mkdocs` で気づくことになる。
@@ -207,6 +212,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 - **記述言語** = 日本語のみ（i18n は入れない）
 - **境界データの入手元** = 国土数値情報の医療圏データ（A38）。隣接リポジトリ <https://github.com/youkiti/visualize-regional-medical-care-for-2040> の `doc/DATA_SOURCES.md` に取得手順と罠が文書化されている
 - **架空データと実データの役割分担** = 架空の10市町村データは概念導入用、専門医名簿はケーススタディ専用
+- **CAR/BYM の実装** = `CARBayes`（issue #19 本文で確定）。`INLA` は CRAN ではなく専用リポジトリからの導入で読者に要求するハードルが高いため、コラムで触れるに留める
 - **簡略化済み（表示専用）GeoJSON を隣接判定に使ってよいか** = 使ってよい。`snap=0` と `snap=0.0001`（座標丸め幅と同程度）で queen contiguity の隣接ペアが完全一致した（1,558件、集合差0件）ため、0.0001度丸めは隣接判定に影響していない。本採用は `snap=0`。測定手順と全診断は `scripts/build_geo.R` と `data/geo/adjacency_diagnostics.md`
 
 ## 未決定事項（実装前にユーザーに確認する）
@@ -214,7 +220,6 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 1. **ライセンス**（CC BY 4.0 が候補）
 2. **修了証（目録）を出すか** — ai-kotohajime には `certificate.js` があるが移植していない
 3. **SaTScan を実演するか、概念紹介にとどめるか** — 章4で考え方は必ず扱うが、別ソフトウェアを動かすハンズオンにするかは未決
-4. **CAR/BYM の実装を `CARBayes` にするか `INLA` にするか** — issue #19 着手時に確定する
 
 ## 執筆上の注意
 
