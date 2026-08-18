@@ -1,0 +1,49 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 必須。git-revision-date-localized プラグインは各ページの最終更新日時を
+          # git履歴から取得する。shallow clone(既定の fetch-depth: 1)だと履歴が無く、
+          # 日時が正しく取れずに現在時刻へフォールバックする(全ページが「今」の更新日時になる)。
+          # このフォールバックは print による情報表示であり MkDocs の WARNING 系統に乗らないため
+          # --strict では検出されない。つまり fetch-depth: 0 を外してもCIは緑のまま
+          # 日時だけが静かに壊れる。だから明示的に必要(ci.yml と同じ理由)。
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: mkdocs build --strict
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

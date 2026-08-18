@@ -1,0 +1,28 @@
+{#-
+  Material テーマの 404.html をテーマオーバーライドで上書きするテンプレート。
+  docs/404.md のような通常ページとして置いても /404/index.html になるだけで、
+  GitHub Pages が実際に配信するルートの 404.html(テーマ既定の静的テンプレート)は
+  上書きされない。そのため本テンプレートで theme.custom_dir 経由の上書きが必要。
+
+  404ページは任意の壊れたURL(例: /Spatial-epidemiology-training/foo/bar/)の位置で
+  表示されるため、本文リンクは必ずルート相対パス(/Spatial-epidemiology-training/...)で
+  書くこと。相対リンクは表示位置によって解決先が変わり壊れる。mkdocs.yml の site_url の
+  サブパス(現在 /Spatial-epidemiology-training/)が変わったら、このファイルのリンクも
+  合わせて変更すること。
+
+  アセット(CSS/JS/favicon等)のURLは main.html 側のテンプレート変数が
+  site_url 設定に基づきルート相対で描画するため、このファイル内で個別に
+  気にする必要はない。
+
+  i18n(英語版への導線)は本教材では不要(日本語のみのサイトのため)。
+-#}
+{% extends "main.html" %}
+{% block htmltitle %}<title>ページが見つかりません - 空間疫学入門</title>{% endblock %}
+{% block content %}
+  <h1>ページが見つかりません</h1>
+  <p>お探しのページが見つかりませんでした。URLの入力間違いや、リンクをコピーする際に一部が欠けてしまったことが原因かもしれません。お手数ですが、以下からお探しの内容をご確認ください。</p>
+  <ul>
+    <li><a href="/Spatial-epidemiology-training/">ホームへ戻る</a></li>
+    <li><a href="/Spatial-epidemiology-training/how-to-use/">使い方を見る</a></li>
+  </ul>
+{% endblock %}
