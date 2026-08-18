@@ -1,0 +1,278 @@
+/*
+ * 空間疫学入門 - extra.css
+ *
+ * クイズ・進捗表示まわりの最小限のスタイル。
+ * Material for MkDocsのCSS変数(--md-...)を可能な範囲で使い、
+ * ライト/ダーク(slate)配色でも破綻しないようにする。
+ *
+ * 移植元: https://github.com/youkiti/ai-kotohajime の extra.css。
+ * クラス接頭辞を aik- から spepi- に変更し、証明書(目録)・実践課題・
+ * 言語切替まわりのスタイルは移植しない(このスキルでは移植しない機能のため)。
+ *
+ * 今後ハードコード色を足す場合は、ダーク(slate)配色での上書きも必ず併せて書くこと
+ * (ライトのみで色を固定すると、prefers-color-scheme: dark 環境で可読性が崩れる。
+ * ai-kotohajime で実際に踏んだ罠)。
+ *
+ * 例:
+ * .my-note { background-color: #fff8e1; }
+ * [data-md-color-scheme="slate"] .my-note { background-color: #3a3319; }
+ */
+
+/* ---------- クイズ ---------- */
+
+.spepi-quiz-loading {
+  color: var(--md-default-fg-color--light, #666);
+}
+
+.spepi-quiz-error {
+  padding: 0.75em 1em;
+  border-radius: 4px;
+  color: var(--md-default-fg-color, inherit);
+  background: rgba(183, 40, 46, 0.08);
+  border: 1px solid #b7282e;
+}
+
+.spepi-quiz-title {
+  font-size: 1.15em;
+  margin-bottom: 0.6em;
+}
+
+.spepi-quiz-passed-note {
+  padding: 0.6em 1em;
+  border: 1px solid #2e7d32;
+  background: rgba(46, 125, 50, 0.08);
+  border-radius: 4px;
+  color: var(--md-default-fg-color, inherit);
+  margin-bottom: 1em;
+}
+
+.spepi-quiz-form {
+  margin-top: 0.5em;
+}
+
+.spepi-quiz-question {
+  border: 1px solid var(--md-default-fg-color--lightest, #ccc);
+  border-radius: 6px;
+  padding: 0.8em 1em 1em;
+  margin: 0 0 1.2em;
+  /* 未回答警告・不正解一覧のアンカーリンクでジャンプした際、Materialの固定ヘッダーに
+     設問先頭が隠れないようにする。 */
+  scroll-margin-top: 4rem;
+}
+
+/* アンカー遷移でスクリプトからフォーカスされた際の枠線は出さない(tabindex="-1"はTabキー操作の
+   順序には含めず、リンクからのジャンプ先を示すためだけに使う)。 */
+.spepi-quiz-question:focus {
+  outline: none;
+}
+
+.spepi-quiz-question legend {
+  font-weight: 600;
+  padding: 0 0.4em;
+  color: var(--md-default-fg-color, inherit);
+}
+
+.spepi-quiz-question--correct {
+  border-color: #2e7d32;
+  background: rgba(46, 125, 50, 0.07);
+}
+
+.spepi-quiz-question--incorrect {
+  border-color: #b7282e;
+  background: rgba(183, 40, 46, 0.07);
+}
+
+/* 採点時に未回答だった設問のハイライト(正誤とは別の警告色にして混同を避ける)。
+   回答すると即座に外れる(change時)ほか、再採点のたびに一旦全除去してから付け直す。 */
+.spepi-quiz-question--unanswered {
+  border-color: #f9a825;
+  background: rgba(249, 168, 37, 0.12);
+}
+
+.spepi-quiz-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  margin-top: 0.6em;
+}
+
+.spepi-quiz-choice {
+  display: block;
+  padding: 0.55em 0.9em;
+  border: 1px solid var(--md-default-fg-color--lightest, #ddd);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--md-default-fg-color, inherit);
+}
+
+.spepi-quiz-choice:hover {
+  background: var(--md-code-bg-color, rgba(0, 0, 0, 0.04));
+}
+
+.spepi-quiz-choice input {
+  margin-right: 0.7em;
+  cursor: pointer;
+}
+
+.spepi-quiz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em;
+  margin-top: 0.5em;
+}
+
+.spepi-quiz-warning {
+  color: #b7282e;
+  font-weight: 600;
+}
+
+.spepi-quiz-warning a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.spepi-quiz-warning a:hover {
+  text-decoration: none;
+}
+
+.spepi-quiz-feedback {
+  margin-top: 0.75em;
+  padding-top: 0.55em;
+  border-top: 1px dashed var(--md-default-fg-color--lightest, #ccc);
+}
+
+.spepi-quiz-feedback-header {
+  font-weight: 600;
+  margin: 0 0 0.3em;
+  color: var(--md-default-fg-color, inherit);
+}
+
+.spepi-quiz-explanation {
+  margin: 0;
+  color: var(--md-default-fg-color--light, inherit);
+}
+
+.spepi-quiz-summary {
+  margin-top: 1em;
+  padding: 0.85em 1em;
+  border-radius: 6px;
+  background: var(--md-code-bg-color, rgba(0, 0, 0, 0.04));
+}
+
+.spepi-quiz-score {
+  font-weight: 600;
+  margin: 0 0 0.35em;
+  color: var(--md-default-fg-color, inherit);
+}
+
+.spepi-quiz-incorrect-list {
+  margin: 0 0 0.35em;
+  color: var(--md-default-fg-color, inherit);
+}
+
+.spepi-quiz-incorrect-list a {
+  color: #b7282e;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.spepi-quiz-incorrect-list a:hover {
+  text-decoration: none;
+}
+
+.spepi-quiz-result-message {
+  margin: 0;
+}
+
+.spepi-quiz-result-message--pass {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.spepi-quiz-result-message--fail {
+  color: #b7282e;
+  font-weight: 700;
+}
+
+/* ---------- 状態色(進捗表示で共用) ---------- */
+
+.spepi-status-passed {
+  color: #2e7d32;
+}
+
+.spepi-status-unpassed {
+  color: var(--md-default-fg-color--light, inherit);
+}
+
+/* ---------- 進捗バッジ(章ページ) ---------- */
+
+.spepi-chapter-progress {
+  margin: 0.6em 0 1.2em;
+  padding: 0.35em 0.75em;
+  border: 1px solid var(--md-default-fg-color--lightest, #ddd);
+  border-radius: 4px;
+  background: var(--md-code-bg-color, rgba(0, 0, 0, 0.04));
+  font-size: 0.8em;
+}
+
+.spepi-chapter-progress-prefix {
+  color: var(--md-default-fg-color--light, inherit);
+}
+
+/* ====================================================================
+   slate(ダーク)配色の上書き
+   ----------------------------------------------------------------------
+   mkdocs.yml の theme.palette に prefers-color-scheme 連動の
+   light/dark 2エントリを設定すると、Material は選択中のスキームに応じて
+   <body data-md-color-scheme="default|slate"> を切り替える。
+   上のセクションで定義した緑/赤/アンバー系のハードコード色はライト配色向けの
+   値のため、slate 選択時のみ [data-md-color-scheme="slate"] セレクタで
+   明るめの色に差し替える(既存ルールの書き換えは行わない。ai-kotohajime で
+   実際に踏んだ罠への対応をそのまま踏襲)。
+
+   コントラスト比は slate 既定背景 ~#2e303e (相対輝度 ≈0.030) に対する概算値。
+   通常テキストは WCAG AA 4.5:1 以上、枠線等の非テキストは 3:1 以上を目安にした。
+   ==================================================================== */
+
+/* 緑(合格・正解) 元 #2e7d32 → #66bb6a (推定コントラスト比 約5.5:1) */
+[data-md-color-scheme="slate"] .spepi-quiz-passed-note {
+  border-color: #66bb6a;
+  background: rgba(102, 187, 106, 0.14);
+}
+
+[data-md-color-scheme="slate"] .spepi-quiz-question--correct {
+  border-color: #66bb6a;
+  background: rgba(102, 187, 106, 0.12);
+}
+
+[data-md-color-scheme="slate"] .spepi-quiz-result-message--pass {
+  color: #66bb6a;
+}
+
+[data-md-color-scheme="slate"] .spepi-status-passed {
+  color: #66bb6a;
+}
+
+/* 赤(不正解・警告・エラー) 元 #b7282e → #ff6b6b (推定コントラスト比 約4.7:1) */
+[data-md-color-scheme="slate"] .spepi-quiz-error {
+  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.14);
+}
+
+[data-md-color-scheme="slate"] .spepi-quiz-question--incorrect {
+  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.12);
+}
+
+[data-md-color-scheme="slate"] .spepi-quiz-warning,
+[data-md-color-scheme="slate"] .spepi-quiz-incorrect-list a,
+[data-md-color-scheme="slate"] .spepi-quiz-result-message--fail {
+  color: #ff6b6b;
+}
+
+/* アンバー(未回答ハイライト) 元 #f9a825 → #ffca28 (推定コントラスト比 約8.5:1、
+   枠線用途で3:1要件は元の値でも満たすが、暗背景での視認性向上のため明度を上げる) */
+[data-md-color-scheme="slate"] .spepi-quiz-question--unanswered {
+  border-color: #ffca28;
+  background: rgba(255, 202, 40, 0.16);
+}

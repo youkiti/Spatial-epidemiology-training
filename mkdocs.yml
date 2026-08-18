@@ -1,0 +1,98 @@
+site_name: 空間疫学入門
+site_description: 疫学の素養がある読者のための空間疫学(地理疫学)教材
+site_url: https://youkiti.github.io/Spatial-epidemiology-training/
+repo_url: https://github.com/youkiti/Spatial-epidemiology-training
+repo_name: youkiti/Spatial-epidemiology-training
+edit_uri: ""
+
+# --strict 時にどのリンク種別をエラー化するか(MkDocs 1.6 の正式設定)。
+# サイト内アンカー(#fragment)不一致は既定では警告に上がらない(info)ため、
+# 明示的に warn 化して --strict でビルドを落とせるようにする(CI でのリンク切れ検出用。
+# ai-kotohajime のコメントの意図をそのまま踏襲)。
+validation:
+  links:
+    anchors: warn
+
+# docs/memo.md はユーザーとの対話ログであり、教材の設計材料であって公開ページの
+# コンテンツではない(CLAUDE.md「執筆上の注意」)。ファイル自体は CLAUDE.md が
+# パスを参照しているため削除・移動せず、ビルド対象からのみ除外する。
+exclude_docs: |
+  memo.md
+
+theme:
+  name: material
+  custom_dir: overrides  # 404.html のテーマオーバーライド用(overrides/404.html)
+  language: ja
+  palette:
+    # 手動トグルは付けず、OS/ブラウザの prefers-color-scheme に自動連動させる(要件定義書 §5.1)。
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: deep orange
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: deep orange
+  font: false
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.tabs.link
+    # navigation.instant は入れない: issue #3 で載せるクイズ等の JS は
+    # 通常のフルページロード(DOMContentLoaded)を前提に初期化する設計とする予定であり、
+    # navigation.instant の SPA的なページ差し替えでは初期化が走らず描画されなくなるため。
+
+plugins:
+  - search
+  - git-revision-date-localized:  # 各ページ末尾に最終更新日時を表示(git履歴からビルド時に埋め込み。外部通信なし)
+      type: datetime
+      timezone: Asia/Tokyo
+  # ai-kotohajime の i18n プラグインは入れない: 本教材は日本語のみで多言語ビルドの対象外(要件定義書 §1.3)。
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  # pymdownx.arithmatex はまだ入れない(TBD)。Moran's I の式表示に将来使う想定だが、
+  # arithmatex を有効化するには MathJax 等の extra_javascript(CDN 読み込み)が対で必要になり、
+  # issue #3 で JS を載せるまでは外部通信を増やしたくない。arithmatex だけ入れて数式が
+  # 描画されない状態を作るよりは、TBD として明示しておく方を選ぶ(issue #2 の判断)。
+
+copyright: "空間疫学入門 — 本サイトはユーザーログを一切収集しません"
+
+extra_css:
+  - assets/css/extra.css
+
+# 読み込み順は依存順(storage.js → quiz.js → progress.js)で固定する。
+# quiz.js/progress.js は先に読み込まれた storage.js の window.SPEPI を前提とするため、
+# 順序を変えないこと(ai-kotohajime の extra_javascript の並び順を踏襲、issue #3)。
+extra_javascript:
+  - assets/js/storage.js
+  - assets/js/quiz.js
+  - assets/js/progress.js
+
+nav:
+  - ホーム: index.md
+  - 使い方: how-to-use.md
+  - 概念パート:
+      - concepts/ch1-descriptive.md
+      - concepts/ch2-spatial-weights.md
+      - concepts/ch3-global-moran.md
+      - concepts/ch4-lisa-gi-satscan.md
+      - concepts/ch5-explanatory.md
+      - concepts/ch6-pitfalls.md
+  - Rハンズオン:
+      - handson/01-map-moran-lisa-gi.md
+      - handson/02-car-bym.md
+      - handson/03-maup.md
+      - handson/04-case-study.md
+  - このサイトについて:
+      - about.md
+      - disclaimer.md
