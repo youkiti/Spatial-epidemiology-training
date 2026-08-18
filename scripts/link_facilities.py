@@ -13,12 +13,24 @@ link_facilities.py — 感染症専門医名簿の施設名を参照点(`scripts
 を作る。全1,059行(突合の成否を問わず)は `data/processed/facility_geo_audit.csv`
 に監査表として書き出す(黙って落とさない)。
 
+## care_setting(診療の場かどうか)と2系列の出力
+
+突合できた行は「診療の場かどうか」を示す `care_setting`(`care`/`non_care`)を
+必ず持つ(自動突合は構造的に常に `care`。crosswalk経由は `facility_crosswalk.csv`
+の `care_setting` 列に従う)。感染症研究所・保健所・製薬企業等は専門医では
+あるが、その医療圏の住民が受診できる先ではないため、`specialists_iryoken2.csv`
+は2系列を出す: `n_specialists_care`(`care` のみ。**主系列**)と
+`n_specialists_all`(`care` + `non_care`)。教材はこの2つの分布を並べて見せ、
+症例定義(何を数えるか)を変えると地図が変わることを示す。
+
 ## 突合の順序(先に決まったら以降は試さない)
 
 1. **crosswalk による上書き** — `data/curated/facility_crosswalk.csv`
    (無ければ空として続行)に `(pref_name, facility_name)` の完全一致があれば
-   それに従う。`basis` が `excluded_non_care`/`unassignable` の行は割付せず、
-   それぞれ `match_status=excluded`/`unassignable` として監査表に出す。
+   それに従う。`basis=unassignable` の行は割付せず `match_status=unassignable`
+   として監査表に出す。`basis=non_care_workplace` で所在の参照点が
+   決まっていない行も同様に `match_status=unassignable`
+   (`reason_code=no_location_for_non_care`)にする。
 2. tier1 / 医療情報ネット — 正規化名が県内で完全一致し、候補がちょうど1件
 3. tier2 / 医療情報ネット — 接尾一致(`a.endswith(b) or b.endswith(a)`)が
    県内でちょうど1件。かつ短い方の正規化名が5文字以上、かつ短い方が
@@ -59,9 +71,10 @@ link_facilities.py — 感染症専門医名簿の施設名を参照点(`scripts
   「複数の名簿行が同じ参照点に当たった」ことを示す採用行への補助フラグで、
   採用/不採用の別(`match_status`/`reason_code`)とは別列にして混ざらないように
   している)
-- `data/processed/specialists_iryoken2.csv` — 割り付いた行だけを二次医療圏で
-  合計したもの。専門医0人の医療圏も339件すべて出す(0行だと「データが無い」
-  のか「0人」なのか区別できず、地図で欠測と0を取り違えるため)
+- `data/processed/specialists_iryoken2.csv` — 割り付いた行を二次医療圏で
+  合計したもの。`n_specialists_care`(主系列)・`n_specialists_all` の2系列。
+  専門医0人の医療圏も339件すべて出す(0行だと「データが無い」のか「0人」
+  なのか区別できず、地図で欠測と0を取り違えるため)
 
 必要環境: Python 3.9+(追加依存なし。標準ライブラリのみ)
 
@@ -110,13 +123,19 @@ ALLOWED_BASIS = {
     "university_hospital",
     "research_institute",
     "renamed",
-    "excluded_non_care",
+    "non_care_workplace",
     "unassignable",
 }
+# unassignable だけが「座標を持たせようがない(match_statusを専用の値にする)」
+# basis。non_care_workplace は診療の場ではないが所在は持ちうるため、
+# excluded_non_care のときと違って一律 match_status を差し替えない
+# (load_crosswalk / match_roster 側で care_setting・resolved_facility_name の
+# 有無を見て matched か unassignable かを個別に決める)。
 BASIS_TO_MATCH_STATUS = {
-    "excluded_non_care": "excluded",
     "unassignable": "unassignable",
 }
+
+ALLOWED_CARE_SETTING = {"care", "non_care"}
 
 AUDIT_HEADER = [
     "pref_name",
@@ -126,6 +145,7 @@ AUDIT_HEADER = [
     "match_method",
     "coordinate_source",
     "assignment_basis",
+    "care_setting",
     "ref_facility_name",
     "iryoken2_code",
     "iryoken2_name",
@@ -135,7 +155,13 @@ AUDIT_HEADER = [
     "contested",
 ]
 
-IRYOKEN2_OUT_HEADER = ["iryoken2_code", "iryoken2_name", "pref_name", "n_specialists"]
+IRYOKEN2_OUT_HEADER = [
+    "iryoken2_code",
+    "iryoken2_name",
+    "pref_name",
+    "n_specialists_care",
+    "n_specialists_all",
+]
 
 
 # ===========================================================================
@@ -243,9 +269,9 @@ def load_crosswalk(
     refs_by_pref_normalized: Dict[str, Dict[str, List[dict]]],
 ) -> Dict[Tuple[str, str], dict]:
     """`data/curated/facility_crosswalk.csv` を読み込み、
-    `(pref_name, facility_name) -> {basis, iryoken2_code, coordinate_source,
-    resolved_facility_name, note}` の辞書を返す。ファイルが無ければ空辞書のまま
-    続行する(commander が後で作る)。
+    `(pref_name, facility_name) -> {basis, care_setting, iryoken2_code,
+    coordinate_source, resolved_facility_name, note}` の辞書を返す。ファイルが
+    無ければ空辞書のまま続行する(commander が後で作る)。
 
     ## なぜ `resolved_facility_name` から `iryoken2_code` を導出するのか
 
@@ -266,16 +292,26 @@ def load_crosswalk(
       - `basis` は `ALLOWED_BASIS` のいずれか
       - `(pref_name, facility_name)` は名簿(`roster_keys`)に実在すること
         (名簿改訂で行が消えたのにcrosswalkが残っている状態を検出するため)
-      - `basis` が `excluded_non_care`/`unassignable` のときは
-        `iryoken2_code` は**必ず空**であること(埋まっていたら書き間違いの
-        可能性が高いためエラー)
+      - `care_setting` は、`basis=unassignable` のときは**必ず空**
+        (座標を持たせようがない行に診療の場かどうかは判定できないため)、
+        それ以外のときは `care`/`non_care` のいずれか(空や他の値はエラー)
+      - `basis` が `unassignable` のときは `iryoken2_code` は**必ず空**であること
+        (埋まっていたら書き間違いの可能性が高いためエラー)
       - `basis` がそれ以外のとき:
         - `resolved_facility_name` が埋まっていれば、県内の参照点テーブルから
           正規化名の完全一致で引き当てて `iryoken2_code` を導出する
           (見つからない・一意に決まらない・医療圏が空、のいずれもエラー)。
           `iryoken2_code` 列も埋まっていれば導出値と一致するか検査する
-        - `resolved_facility_name` が空なら `iryoken2_code` が必須(空ならエラー)。
-          かつ `data/geo/iryoken2.geojson` に実在するコードであること
+        - `resolved_facility_name` が空で `iryoken2_code` も空のとき:
+          `basis=non_care_workplace` に限り許容する(診療を行わない勤務先は
+          所在の参照点が見つからないことがあるため。この場合は
+          `match_roster` 側で `match_status=unassignable`
+          (`reason_code=no_location_for_non_care`)として扱う)。
+          それ以外の `basis`(`university_hospital`/`research_institute`/
+          `renamed`)では所在が必ず特定できるはずなので、両方空はエラー
+        - `resolved_facility_name` が空で `iryoken2_code` だけ埋まっていれば、
+          従来どおりそれを正本として扱う。`data/geo/iryoken2.geojson` に
+          実在するコードであること
       - `(pref_name, facility_name)` の重複行はエラー
     """
     if not path.exists():
@@ -284,7 +320,15 @@ def load_crosswalk(
     result: Dict[Tuple[str, str], dict] = {}
     with path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
-        required_cols = {"pref_name", "facility_name", "basis", "iryoken2_code", "resolved_facility_name", "note"}
+        required_cols = {
+            "pref_name",
+            "facility_name",
+            "basis",
+            "care_setting",
+            "iryoken2_code",
+            "resolved_facility_name",
+            "note",
+        }
         if reader.fieldnames is None or not required_cols.issubset(set(reader.fieldnames)):
             raise SystemExit(f"エラー: {path} に必要な列が揃っていません(期待: {sorted(required_cols)})")
 
@@ -292,6 +336,7 @@ def load_crosswalk(
             pref_name = (row.get("pref_name") or "").strip()
             facility_name = (row.get("facility_name") or "").strip()
             basis = (row.get("basis") or "").strip()
+            care_setting = (row.get("care_setting") or "").strip()
             code = (row.get("iryoken2_code") or "").strip()
             resolved_facility_name = (row.get("resolved_facility_name") or "").strip()
             key = (pref_name, facility_name)
@@ -306,14 +351,27 @@ def load_crosswalk(
             if key in result:
                 raise SystemExit(f"エラー: {path}:{line_no}行目: (pref_name, facility_name) が重複しています: {key}")
 
+            if basis == "unassignable":
+                if care_setting:
+                    raise SystemExit(
+                        f"エラー: {path}:{line_no}行目: basis=unassignable では care_setting は空である"
+                        f"必要があります(値: {care_setting!r}。座標を持たせようがない行に診療の場かどうかは"
+                        f"判定できないため)"
+                    )
+            elif care_setting not in ALLOWED_CARE_SETTING:
+                raise SystemExit(
+                    f"エラー: {path}:{line_no}行目: basis={basis!r} では care_setting は"
+                    f" {sorted(ALLOWED_CARE_SETTING)} のいずれかである必要があります(値: {care_setting!r})"
+                )
+
             coordinate_source = "crosswalk"
 
             if basis in BASIS_TO_MATCH_STATUS:
-                # excluded_non_care / unassignable は iryoken2_code を空にする(埋まっていたら書き間違い)
+                # unassignable は iryoken2_code を空にする(埋まっていたら書き間違い)
                 if code:
                     raise SystemExit(
                         f"エラー: {path}:{line_no}行目: basis={basis!r} では iryoken2_code は空である"
-                        f"必要があります(値: {code!r}。除外系basisにコードが入っているのは書き間違いの疑いが強いため)"
+                        f"必要があります(値: {code!r}。unassignableにコードが入っているのは書き間違いの疑いが強いため)"
                     )
             elif resolved_facility_name:
                 pref_code = pref_name_to_code.get(pref_name)
@@ -335,20 +393,26 @@ def load_crosswalk(
                         f"食い違います"
                     )
                 code = derived_code
-            else:
-                if not code:
-                    raise SystemExit(
-                        f"エラー: {path}:{line_no}行目: basis={basis!r} では resolved_facility_name が空のとき"
-                        f" iryoken2_code が必須です(空になっています)"
-                    )
+            elif code:
                 if code not in valid_area_codes:
                     raise SystemExit(
                         f"エラー: {path}:{line_no}行目: iryoken2_code {code!r} は"
                         f" data/geo/iryoken2.geojson に存在しません"
                     )
+            elif basis != "non_care_workplace":
+                # resolved_facility_name も iryoken2_code も空。
+                # non_care_workplace(診療を行わない勤務先)だけは所在の参照点が
+                # 見つからないことを許容する(match_roster側でunassignable扱いに
+                # する)。university_hospital/research_institute/renamed は
+                # 施設として必ず所在が特定できるはずなので、両方空はエラーにする。
+                raise SystemExit(
+                    f"エラー: {path}:{line_no}行目: basis={basis!r} では resolved_facility_name と"
+                    f" iryoken2_code の少なくとも一方が必要です(両方とも空になっています)"
+                )
 
             result[key] = {
                 "basis": basis,
+                "care_setting": care_setting,
                 "iryoken2_code": code,
                 "coordinate_source": coordinate_source,
                 "resolved_facility_name": resolved_facility_name,
@@ -423,6 +487,7 @@ def make_audit_row(
     match_method: str = "",
     coordinate_source: str = "",
     assignment_basis: str = "",
+    care_setting: str = "",
     ref_facility_name: str = "",
     iryoken2_code: str = "",
     iryoken2_name: str = "",
@@ -438,6 +503,7 @@ def make_audit_row(
         "match_method": match_method,
         "coordinate_source": coordinate_source,
         "assignment_basis": assignment_basis,
+        "care_setting": care_setting,
         "ref_facility_name": ref_facility_name,
         "iryoken2_code": iryoken2_code,
         "iryoken2_name": iryoken2_name,
@@ -472,6 +538,7 @@ def match_roster(
             cw = crosswalk_map[key]
             basis = cw["basis"]
             if basis in BASIS_TO_MATCH_STATUS:
+                # unassignable: 座標を持たせようがない行
                 results.append(
                     make_audit_row(
                         pref_name,
@@ -481,7 +548,27 @@ def match_roster(
                         match_method="crosswalk",
                         coordinate_source="crosswalk",
                         assignment_basis=basis,
+                        care_setting=cw["care_setting"],
                         ref_facility_name=cw["resolved_facility_name"],
+                    )
+                )
+            elif not cw["iryoken2_code"]:
+                # non_care_workplace で所在の参照点が決まらなかった行。
+                # 「除外」ではなく「診療を行わない勤務先だが所在不明」として
+                # unassignable にする(load_crosswalkのバリデーションで
+                # non_care_workplace以外はここに来ない)。
+                results.append(
+                    make_audit_row(
+                        pref_name,
+                        facility_name,
+                        n,
+                        match_status="unassignable",
+                        match_method="crosswalk",
+                        coordinate_source="crosswalk",
+                        assignment_basis=basis,
+                        care_setting=cw["care_setting"],
+                        ref_facility_name=cw["resolved_facility_name"],
+                        reason_code="no_location_for_non_care",
                     )
                 )
             else:
@@ -495,6 +582,7 @@ def match_roster(
                         match_method="crosswalk",
                         coordinate_source=cw["coordinate_source"],
                         assignment_basis=basis,
+                        care_setting=cw["care_setting"],
                         ref_facility_name=cw["resolved_facility_name"],
                         iryoken2_code=code,
                         iryoken2_name=area_code_to_name.get(code, ""),
@@ -542,6 +630,10 @@ def match_roster(
                 match_method=decided_method,
                 coordinate_source=decided_ref["source"],
                 assignment_basis="automatic",
+                # 自動突合は医療情報ネット・P04の病院票/診療所票の参照点にしか
+                # 当たらない(build_ref_index / TIER_STEPS 参照)ので、突合できた
+                # 時点で構造的に診療の場である。よって一律 "care" を入れる。
+                care_setting="care",
                 ref_facility_name=decided_ref["facility_name"],
                 iryoken2_code=code,
                 iryoken2_name=area_code_to_name.get(code, "") if code else "",
@@ -597,13 +689,32 @@ def write_iryoken2_csv(
     area_code_to_name: Dict[str, str],
     area_code_to_pref_name: Dict[str, str],
 ) -> None:
-    """割り付いた行(`match_status=="matched"` かつ `iryoken2_code` が非空)だけを
-    二次医療圏で合計する。専門医0人の医療圏も339件すべて出す。
+    """割り付いた行(`match_status=="matched"` かつ `iryoken2_code` が非空)を
+    二次医療圏で合計する。2系列を出す:
+
+    - `n_specialists_care`(**主系列**): `care_setting=="care"` の行だけを合計。
+      教材が扱うのは専門医「による診療」へのアクセスなので、診療の場に
+      いる専門医だけを数える。
+    - `n_specialists_all`: 上記に `care_setting=="non_care"` の行(勤務地は
+      判明しているが診療を行わない: 研究機関・保健所・製薬企業等)を加えた
+      合計。名簿の勤務地をすべて数えた場合の分布。
+
+    matched行の`care_setting`は自動突合なら常に"care"、crosswalk経由なら
+    常に"care"/"non_care"のいずれかになる(load_crosswalkの検証で保証)ので、
+    空になることは無い想定だが、念のため未知の値は両系列から除外する。
+
+    専門医0人の医療圏も339件すべて出す。
     """
-    sums: Counter = Counter()
+    care_sums: Counter = Counter()
+    all_sums: Counter = Counter()
     for r in results:
-        if r["match_status"] == "matched" and r["iryoken2_code"]:
-            sums[r["iryoken2_code"]] += r["n_specialists"]
+        if r["match_status"] != "matched" or not r["iryoken2_code"]:
+            continue
+        if r["care_setting"] == "care":
+            care_sums[r["iryoken2_code"]] += r["n_specialists"]
+            all_sums[r["iryoken2_code"]] += r["n_specialists"]
+        elif r["care_setting"] == "non_care":
+            all_sums[r["iryoken2_code"]] += r["n_specialists"]
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as f:
@@ -615,7 +726,8 @@ def write_iryoken2_csv(
                     area_code,
                     area_code_to_name[area_code],
                     area_code_to_pref_name[area_code],
-                    sums.get(area_code, 0),
+                    care_sums.get(area_code, 0),
+                    all_sums.get(area_code, 0),
                 ]
             )
 
@@ -637,8 +749,8 @@ def stage_of(r: dict) -> str:
             return "tier1_p04"
         if r["match_method"] == "normalized_suffix" and r["coordinate_source"] == P04_SOURCE:
             return "tier2_p04"
-    if r["match_status"] in ("excluded", "unassignable"):
-        return "excluded"
+    if r["match_status"] == "unassignable":
+        return "unassignable"
     if r["match_status"] == "unmatched":
         return "unmatched"
     return "unknown"  # pragma: no cover (partition漏れがあれば気づけるようにしておく)
@@ -650,11 +762,20 @@ STAGE_LABELS = {
     "tier2_iryojoho": "tier2 医療情報ネット",
     "tier1_p04": "tier1 P04",
     "tier2_p04": "tier2 P04",
-    "excluded": "除外(excluded/unassignable)",
+    "unassignable": "割付不可(unassignable)",
     "unmatched": "未割付",
     "unknown": "不明(要調査)",
 }
-STAGE_ORDER = ["crosswalk", "tier1_iryojoho", "tier2_iryojoho", "tier1_p04", "tier2_p04", "excluded", "unmatched", "unknown"]
+STAGE_ORDER = [
+    "crosswalk",
+    "tier1_iryojoho",
+    "tier2_iryojoho",
+    "tier1_p04",
+    "tier2_p04",
+    "unassignable",
+    "unmatched",
+    "unknown",
+]
 
 
 def print_report(results: List[dict]) -> None:
@@ -673,23 +794,52 @@ def print_report(results: List[dict]) -> None:
         stage_n[s] += r["n_specialists"]
     matched_n = sum(stage_n[s] for s in ("crosswalk", "tier1_iryojoho", "tier2_iryojoho", "tier1_p04", "tier2_p04"))
     for s in STAGE_ORDER:
-        if stage_rows[s] == 0 and s not in ("crosswalk", "tier1_iryojoho", "tier2_iryojoho", "tier1_p04", "tier2_p04", "excluded", "unmatched"):
+        if stage_rows[s] == 0 and s not in (
+            "crosswalk",
+            "tier1_iryojoho",
+            "tier2_iryojoho",
+            "tier1_p04",
+            "tier2_p04",
+            "unassignable",
+            "unmatched",
+        ):
             continue
         print(f"  {STAGE_LABELS[s]}: {stage_rows[s]}行 / {stage_n[s]}名")
     print(f"  自動割付+crosswalk割付 計: {matched_n}名")
     print()
 
-    print("== 人数の内訳 ==")
+    print("== 人数の内訳(care / non_care の別) ==")
     # matched(施設を特定できた)と、そのうち実際に二次医療圏の地図に載る人数
     # (iryoken2_codeが非空)は別の数。両方とも意味のある数なので、どちらかに
     # 丸めず両方を明示的に出す(matchedでもiryoken2_codeが空の行は、参照点の
     # 座標がどの医療圏ポリゴンにも入らない施設で、地図には反映されない)。
-    mapped_rows = [r for r in results if r["match_status"] == "matched" and r["iryoken2_code"]]
-    mapped_n = sum(r["n_specialists"] for r in mapped_rows)
+    #
+    # さらに、diagnosisの場かどうか(care_setting)で2系列に分ける。
+    # care のみ = 「診療の場にいる専門医だけを数える」分布(主系列。
+    # specialists_iryoken2.csv の n_specialists_care)。care+non_care =
+    # 「名簿の勤務地をすべて数える」分布(specialists_iryoken2.csv の
+    # n_specialists_all)。感染症研究所・保健所・製薬企業等は専門医では
+    # あるが、その医療圏の住民が受診できる先ではないため care には含めない。
+    matched_care_rows = [r for r in results if r["match_status"] == "matched" and r["care_setting"] == "care"]
+    matched_noncare_rows = [r for r in results if r["match_status"] == "matched" and r["care_setting"] == "non_care"]
+    matched_care_n = sum(r["n_specialists"] for r in matched_care_rows)
+    matched_noncare_n = sum(r["n_specialists"] for r in matched_noncare_rows)
+
+    mapped_care_rows = [r for r in matched_care_rows if r["iryoken2_code"]]
+    mapped_noncare_rows = [r for r in matched_noncare_rows if r["iryoken2_code"]]
+    mapped_care_n = sum(r["n_specialists"] for r in mapped_care_rows)
+    mapped_noncare_n = sum(r["n_specialists"] for r in mapped_noncare_rows)
+    mapped_all_n = mapped_care_n + mapped_noncare_n
+
     unmapped_matched_rows = [r for r in results if r["match_status"] == "matched" and not r["iryoken2_code"]]
     unmapped_matched_n = sum(r["n_specialists"] for r in unmapped_matched_rows)
+
     print(f"  施設を特定できた(matched): {matched_n}名")
-    print(f"  うち二次医療圏に載る:      {mapped_n}名 ← specialists_iryoken2.csv の合計")
+    print(f"    うち診療の場(care):          {matched_care_n}名")
+    print(f"    うち非診療の勤務先(non_care): {matched_noncare_n}名")
+    print(f"  うち二次医療圏に載る:")
+    print(f"    診療の場のみ(care、主系列): {mapped_care_n}名 ← specialists_iryoken2.csv の n_specialists_care 合計")
+    print(f"    勤務地ベース(care+non_care): {mapped_all_n}名 ← specialists_iryoken2.csv の n_specialists_all 合計")
     if unmapped_matched_rows:
         detail = "、".join(f"{r['pref_name']} {r['facility_name']}" for r in unmapped_matched_rows)
         print(
@@ -698,10 +848,12 @@ def print_report(results: List[dict]) -> None:
         )
     print()
 
-    print("== 割付率(専門医数ベース) ==")
-    mapped_rate = mapped_n / total_n if total_n else 0.0
+    print("== 割付率(専門医数ベース。2系列) ==")
+    care_rate = mapped_care_n / total_n if total_n else 0.0
+    all_rate = mapped_all_n / total_n if total_n else 0.0
     matched_rate = matched_n / total_n if total_n else 0.0
-    print(f"  地図に載る割合: {mapped_n}/{total_n} = {mapped_rate:.1%}")
+    print(f"  地図に載る割合(診療の場のみ・主系列): {mapped_care_n}/{total_n} = {care_rate:.1%}")
+    print(f"  地図に載る割合(勤務地ベース)          : {mapped_all_n}/{total_n} = {all_rate:.1%}")
     print(f"  (施設を特定できた割合: {matched_n}/{total_n} = {matched_rate:.1%})")
     print()
 
@@ -719,15 +871,17 @@ def print_report(results: List[dict]) -> None:
                 print(f"    - {r['pref_name']} / {r['facility_name']} / {r['n_specialists']}名 ({r['match_method']})")
     print()
 
-    print("== 都道府県別の割付率(専門医数ベース。低い順) ==")
+    print("== 都道府県別の割付率(専門医数ベース・care基準=主系列。低い順) ==")
     pref_total: Counter = Counter()
     pref_matched: Counter = Counter()
     for r in results:
         pref_total[r["pref_name"]] += r["n_specialists"]
-        # 分子は「地図に載る人数」= matched かつ iryoken2_code が非空(matched でも
-        # iryoken2_code が空の行は地図に載らない。実例: 長崎県サン・レモ リハビリ病院。
-        # verify_facility_linkage.py の条件7と同じ定義に揃えている)。
-        if r["match_status"] == "matched" and r["iryoken2_code"]:
+        # 分子は「診療の場として地図に載る人数」= matched かつ iryoken2_code が
+        # 非空 かつ care_setting=="care"(matched でも iryoken2_code が空の行は
+        # 地図に載らない。実例: 長崎県サン・レモ リハビリ病院。non_careの行は
+        # 主系列の地図には載らない。verify_facility_linkage.py の条件7と同じ
+        # 定義に揃えている)。
+        if r["match_status"] == "matched" and r["iryoken2_code"] and r["care_setting"] == "care":
             pref_matched[r["pref_name"]] += r["n_specialists"]
     pref_rates = []
     for pref_name, total in pref_total.items():

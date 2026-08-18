@@ -12,13 +12,15 @@ verify_facility_linkage.py — `scripts/link_facilities.py` が行った施設�
   条件1: 監査表の網羅性。`facility_geo_audit.csv` の (pref_name, facility_name)
          の集合が `specialists_facility.csv` と完全一致し、行数も一致する。
   条件2: 人数の保存。監査表の n_specialists 合計が名簿(specialists_facility.csv)
-         と一致し、かつ matched + unmatched + excluded + unassignable の
-         人数合計が監査表の合計と一致する(想定外の match_status が無いことも
+         と一致し、かつ matched + unmatched + unassignable の人数合計が
+         監査表の合計と一致する(想定外の match_status が無いことも
          この時点で検出される)。
-  条件3: 医療圏集計の整合。`specialists_iryoken2.csv` の合計 + (matched だが
-         iryoken2_code が空の行の人数) = matched の人数合計であること。
+  条件3: 医療圏集計の整合(care/all の2系列)。それぞれの系列で
+         「specialists_iryoken2.csv の合計 + (その系列でmatchedだが
+         iryoken2_codeが空の行の人数) = その系列のmatched人数合計」であること。
          かつ、監査表から医療圏ごとに再集計した値が `specialists_iryoken2.csv`
-         と1件残らず一致すること。
+         の該当列と1件残らず一致すること(care系列は care_setting=="care" の
+         matched行だけ、all系列は matched行全体を対象にする)。
   条件4: 医療圏の件数。`specialists_iryoken2.csv` が `iryoken2.geojson` の
          339区域を過不足なく含む(0人の区域も行として存在する)。
   条件5: 県の整合。割付済み行の iryoken2_code の先頭2桁が、名簿の pref_name に
@@ -32,13 +34,13 @@ verify_facility_linkage.py — `scripts/link_facilities.py` が行った施設�
          Spearman順位相関を計算する。|ρ| >= RHO_THRESHOLD なら条件を
          満たさないと判定する。「海外」は分母データが無いため除外する。
 
-         割付率の分子は「match_status=="matched" かつ iryoken2_code が
-         非空」の専門医数(全体は名簿本体の県別人数)。この条件が検査したいのは
-         「地図に載らなかったこと」が結果と相関していないかであり、matched
-         であっても iryoken2_code が空の行(実例: 長崎県 サン・レモ
-         リハビリ病院、2名。参照点の座標がどの医療圏ポリゴンにも入らない)は
-         地図には載らない。よって分子から除く(matched全体を分子にすると、
-         検査したい対象と計算対象がわずかにずれる)。
+         割付率の分子は**care系列(主系列)**の「match_status=="matched" かつ
+         iryoken2_code が非空 かつ care_setting=="care"」の専門医数(全体は
+         名簿本体の県別人数)。この条件が検査したいのは「地図に載らなかった
+         こと」が結果と相関していないかであり、matched であっても
+         iryoken2_code が空の行(実例: 長崎県 サン・レモ リハビリ病院、2名。
+         参照点の座標がどの医療圏ポリゴンにも入らない)や care_setting が
+         "non_care" の行(教材の主系列の地図には載らない)は分子から除く。
 
          閾値 RHO_THRESHOLD=0.3 の根拠: 教材が戒めているのは「欠測パターンが
          地図の模様を作ってしまう」ことそのものである(CLAUDE.md 「教材が
@@ -51,7 +53,12 @@ verify_facility_linkage.py — `scripts/link_facilities.py` が行った施設�
          崩れるため、検算のしきい値として採用した。
   条件8: crosswalkの健全性。`data/curated/facility_crosswalk.csv` の全行が
          監査表で意図どおりに反映されている(basis と assignment_basis が
-         一致し、excluded_non_care/unassignable の行が matched になっていない)。
+         一致し、unassignable の行が matched になっていない)。加えて、
+         crosswalkの care_setting と監査表の care_setting が一致すること
+         (basis=unassignable の行は両方とも空であることを確認する)。
+  条件9: care/all 2系列の非負関係。`specialists_iryoken2.csv` の全339区域で
+         `n_specialists_all >= n_specialists_care` が成り立つこと。逆転したら
+         集計のバグ(non_careの人数が負になっているのと同義)。
 
 条件7のSpearman順位相関は、閾値判定とは別に値そのものを必ず標準出力に出す。
 
@@ -187,14 +194,19 @@ def check_condition2(audit_rows: List[dict], roster_rows: List[dict]) -> bool:
     audit_total = sum(int(r["n_specialists"]) for r in audit_rows)
     roster_total = sum(int(r["n_specialists"]) for r in roster_rows)
 
-    known_statuses = ("matched", "unmatched", "excluded", "unassignable")
+    known_statuses = ("matched", "unmatched", "unassignable")
     status_totals: Counter = Counter()
     for r in audit_rows:
         status_totals[r["match_status"]] += int(r["n_specialists"])
     unknown_statuses = sorted(set(status_totals) - set(known_statuses))
     partition_sum = sum(status_totals[s] for s in known_statuses)
 
-    mapped_n = sum(
+    mapped_care_n = sum(
+        int(r["n_specialists"])
+        for r in audit_rows
+        if r["match_status"] == "matched" and r["iryoken2_code"] and r["care_setting"] == "care"
+    )
+    mapped_all_n = sum(
         int(r["n_specialists"]) for r in audit_rows if r["match_status"] == "matched" and r["iryoken2_code"]
     )
 
@@ -203,11 +215,13 @@ def check_condition2(audit_rows: List[dict], roster_rows: List[dict]) -> bool:
         print(f"    {s}: {status_totals.get(s, 0)}名")
         if s == "matched":
             # 条件3で検査する値と突き合わせやすいように、matchedのうち実際に
-            # 二次医療圏の地図に載る人数(iryoken2_codeが非空)も併記する。
-            print(f"      うち医療圏に載る(iryoken2_codeが非空): {mapped_n}名")
+            # 二次医療圏の地図に載る人数(iryoken2_codeが非空)も、care/allの
+            # 2系列で併記する。
+            print(f"      うち医療圏に載る(care、主系列): {mapped_care_n}名")
+            print(f"      うち医療圏に載る(all=care+non_care): {mapped_all_n}名")
     if unknown_statuses:
         print(f"    想定外のmatch_status: {unknown_statuses}")
-    print(f"  matched+unmatched+excluded+unassignable = {partition_sum}名")
+    print(f"  matched+unmatched+unassignable = {partition_sum}名")
 
     totals_match = audit_total == roster_total
     partition_ok = partition_sum == audit_total and not unknown_statuses
@@ -219,37 +233,53 @@ def check_condition2(audit_rows: List[dict], roster_rows: List[dict]) -> bool:
     return ok
 
 
-def check_condition3(audit_rows: List[dict], iryoken2_rows: List[dict]) -> bool:
-    matched_rows = [r for r in audit_rows if r["match_status"] == "matched"]
-    matched_total = sum(int(r["n_specialists"]) for r in matched_rows)
-    empty_code_total = sum(int(r["n_specialists"]) for r in matched_rows if not r["iryoken2_code"])
-    iryoken2_total = sum(int(r["n_specialists"]) for r in iryoken2_rows)
+def _check_condition3_series(
+    series_label: str,
+    series_column: str,
+    matched_rows_for_series: List[dict],
+    iryoken2_rows: List[dict],
+) -> bool:
+    """条件3の1系列分(care または all)の残高検査・医療圏別の再集計突合を行う。"""
+    series_total = sum(int(r["n_specialists"]) for r in matched_rows_for_series)
+    empty_code_total = sum(int(r["n_specialists"]) for r in matched_rows_for_series if not r["iryoken2_code"])
+    iryoken2_total = sum(int(r[series_column]) for r in iryoken2_rows)
 
-    print(f"  matched合計: {matched_total}名(うちiryoken2_codeが空: {empty_code_total}名)")
-    print(f"  specialists_iryoken2.csv合計: {iryoken2_total}名")
-    balance_ok = (iryoken2_total + empty_code_total) == matched_total
+    print(f"  [{series_label}] matched合計: {series_total}名(うちiryoken2_codeが空: {empty_code_total}名)")
+    print(f"  [{series_label}] specialists_iryoken2.csv の {series_column} 合計: {iryoken2_total}名")
+    balance_ok = (iryoken2_total + empty_code_total) == series_total
     print(
-        f"  iryoken2合計 + 空コード分 = matched合計 か: "
+        f"  [{series_label}] {series_column}合計 + 空コード分 = matched合計 か: "
         f"{iryoken2_total} + {empty_code_total} = {iryoken2_total + empty_code_total}"
         f"({'○ matched合計と一致' if balance_ok else '■ matched合計と不一致'})"
     )
 
     recomputed: Counter = Counter()
-    for r in matched_rows:
+    for r in matched_rows_for_series:
         if r["iryoken2_code"]:
             recomputed[r["iryoken2_code"]] += int(r["n_specialists"])
     mismatches = []
     for r in iryoken2_rows:
         code = r["iryoken2_code"]
         expected = recomputed.get(code, 0)
-        actual = int(r["n_specialists"])
+        actual = int(r[series_column])
         if expected != actual:
             mismatches.append((code, r["iryoken2_name"], expected, actual))
-    print(f"  監査表からの再集計と specialists_iryoken2.csv の突合: 不一致 {len(mismatches)}件")
+    print(f"  [{series_label}] 監査表からの再集計と {series_column} の突合: 不一致 {len(mismatches)}件")
     for code, name, expected, actual in mismatches[:MAX_LISTED]:
         print(f"    {code} {name}: 監査表からの再集計={expected} / ファイル記載={actual}")
 
-    ok = balance_ok and not mismatches
+    return balance_ok and not mismatches
+
+
+def check_condition3(audit_rows: List[dict], iryoken2_rows: List[dict]) -> bool:
+    matched_rows = [r for r in audit_rows if r["match_status"] == "matched"]
+    care_matched_rows = [r for r in matched_rows if r["care_setting"] == "care"]
+
+    care_ok = _check_condition3_series("care(主系列)", "n_specialists_care", care_matched_rows, iryoken2_rows)
+    print()
+    all_ok = _check_condition3_series("all(care+non_care)", "n_specialists_all", matched_rows, iryoken2_rows)
+
+    ok = care_ok and all_ok
     print(f"  判定: {'○ 条件を満たす' if ok else '■ 条件を満たさない'}")
     return ok
 
@@ -325,12 +355,14 @@ def check_condition7(audit_rows: List[dict], population_rows: List[dict]) -> boo
     pop_map = {r["pref_name"]: int(r["population_2020"]) for r in population_rows}
 
     total: Counter = Counter()
-    mapped: Counter = Counter()  # 分子: matched かつ iryoken2_code が非空(=実際に地図に載る人数)
+    # 分子: matched かつ iryoken2_code が非空 かつ care_setting=="care"
+    # (=主系列で実際に地図に載る人数)。教材の主系列で検査するため。
+    mapped: Counter = Counter()
     for r in audit_rows:
         if r["pref_name"] == "海外":
             continue
         total[r["pref_name"]] += int(r["n_specialists"])
-        if r["match_status"] == "matched" and r["iryoken2_code"]:
+        if r["match_status"] == "matched" and r["iryoken2_code"] and r["care_setting"] == "care":
             mapped[r["pref_name"]] += int(r["n_specialists"])
 
     prefs = sorted(total)
@@ -346,7 +378,8 @@ def check_condition7(audit_rows: List[dict], population_rows: List[dict]) -> boo
 
     print(f"  対象: {len(prefs)}都道府県(「海外」は分母データが無いため除外)")
     print(
-        "  割付率(matched かつ iryoken2_code非空、つまり実際に地図に載る人数/名簿本体人数)"
+        "  割付率(matched かつ iryoken2_code非空 かつ care_setting==care、つまり"
+        "主系列で実際に地図に載る人数/名簿本体人数)"
         " と 人口10万対専門医数(名簿本体ベース) の Spearman順位相関:"
     )
     print(f"    ρ = {rho:.4f}")
@@ -365,6 +398,7 @@ def check_condition8(audit_rows: List[dict], crosswalk_rows: List[dict]) -> bool
         pref_name = (row.get("pref_name") or "").strip()
         facility_name = (row.get("facility_name") or "").strip()
         basis = (row.get("basis") or "").strip()
+        crosswalk_care_setting = (row.get("care_setting") or "").strip()
         key = (pref_name, facility_name)
 
         audit_row = audit_index.get(key)
@@ -379,14 +413,37 @@ def check_condition8(audit_rows: List[dict], crosswalk_rows: List[dict]) -> bool
             )
             continue
 
+        if audit_row["care_setting"] != crosswalk_care_setting:
+            problems.append(
+                f"{key}: crosswalkのcare_setting={crosswalk_care_setting!r} と監査表のcare_setting="
+                f"{audit_row['care_setting']!r} が食い違う"
+            )
+
         expected_status = link.BASIS_TO_MATCH_STATUS.get(basis)
         if expected_status is not None:
-            # excluded_non_care / unassignable は、その専用のmatch_statusになって
-            # いなければならない(誤ってmatchedのままになっていないかを検査)。
+            # unassignable は、その専用のmatch_statusになっていなければならない
+            # (誤ってmatchedのままになっていないかを検査)。
             if audit_row["match_status"] != expected_status:
                 problems.append(
                     f"{key}: basis={basis!r} は match_status={expected_status!r} のはずが、"
                     f"監査表では{audit_row['match_status']!r}になっている"
+                )
+        elif basis == "non_care_workplace":
+            # non_care_workplace は「所在が決まって matched」か「所在が決まらず
+            # unassignable(reason_code=no_location_for_non_care)」のいずれかが
+            # 正しい(link_facilities.pyのmatch_roster参照)。それ以外の
+            # match_status(unmatched等)になっていたら誤り。
+            is_matched = audit_row["match_status"] == "matched"
+            is_unassignable_no_location = (
+                audit_row["match_status"] == "unassignable"
+                and audit_row["reason_code"] == "no_location_for_non_care"
+            )
+            if not (is_matched or is_unassignable_no_location):
+                problems.append(
+                    f"{key}: basis=non_care_workplace は matched か "
+                    f"unassignable(reason_code=no_location_for_non_care) のいずれかのはずが、"
+                    f"監査表では match_status={audit_row['match_status']!r}"
+                    f"(reason_code={audit_row['reason_code']!r})になっている"
                 )
         else:
             if audit_row["match_status"] != "matched":
@@ -401,6 +458,24 @@ def check_condition8(audit_rows: List[dict], crosswalk_rows: List[dict]) -> bool
         print(f"    {p}")
 
     ok = not problems
+    print(f"  判定: {'○ 条件を満たす' if ok else '■ 条件を満たさない'}")
+    return ok
+
+
+def check_condition9(iryoken2_rows: List[dict]) -> bool:
+    mismatches = []
+    for r in iryoken2_rows:
+        care = int(r["n_specialists_care"])
+        all_ = int(r["n_specialists_all"])
+        if all_ < care:
+            mismatches.append((r["iryoken2_code"], r["iryoken2_name"], care, all_))
+
+    print(f"  対象: {len(iryoken2_rows)}区域を検査")
+    print(f"  n_specialists_all < n_specialists_care の逆転: {len(mismatches)}件")
+    for code, name, care, all_ in mismatches[:MAX_LISTED]:
+        print(f"    {code} {name}: n_specialists_care={care} / n_specialists_all={all_}")
+
+    ok = not mismatches
     print(f"  判定: {'○ 条件を満たす' if ok else '■ 条件を満たさない'}")
     return ok
 
@@ -497,9 +572,14 @@ def main(argv: List[str]) -> int:
     print()
     overall_ok = overall_ok and cond8_ok
 
+    print("== 条件9: care/all 2系列の非負関係 ==")
+    cond9_ok = check_condition9(iryoken2_rows)
+    print()
+    overall_ok = overall_ok and cond9_ok
+
     print("=" * 60)
     if overall_ok:
-        print("結果: 受け入れ条件1〜8をすべて満たしました。")
+        print("結果: 受け入れ条件1〜9をすべて満たしました。")
     else:
         print("結果: 受け入れ条件を満たさない項目があります。")
     return 0 if overall_ok else 1
