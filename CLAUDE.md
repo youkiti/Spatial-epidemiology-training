@@ -4,9 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## このリポジトリの現状
 
-**Phase0 完了（2026-08-18）。** 設計文書・サイト骨格・クイズエンジンが main に入り、GitHub Pages で公開されている。
+**Phase0 と概念パート6章が完了（2026-08-18）。** 設計文書・サイト骨格・クイズエンジン・概念パート全6章が main に入り、GitHub Pages で公開されている。
 
 公開先: <https://youkiti.github.io/Spatial-epidemiology-training/>
+
+残っている issue は3系統。**着手前に必ず GitHub の issue 本文を読むこと**（受け入れ条件と cloud 可否がそこに書いてある）。
+
+| 系統 | issue | この環境で動かせるか |
+|---|---|---|
+| Phase1 データ整備 | #4 境界データ → #5 人口（分母）、#7〜#9 専門医名簿PDF | **不可**。名簿PDF・国土数値情報・e-Stat の取得が要る。#4 が全ての起点 |
+| Phase2 引用の裏取り | #16 実例論文2本の一次資料での確認 | 論文全文にアクセスできれば可 |
+| Phase3 ハンズオン | #17 Rmd 配管 → #18〜#20 | **不可**。R が要る。#17 が #18〜#20 の前提 |
+
+クラウドセッションで単独で進められるのは #16 だけ。
 
 ```
 documents/       設計の正本3文書。実装より先にここを読む
