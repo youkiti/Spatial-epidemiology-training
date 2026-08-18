@@ -140,16 +140,71 @@ issue #4 の本文とは異なる判断を3点行っている。理由は以下�
 | `Rscript scripts/build_geo.R` | `data/geo/iryoken2.geojson`・`data/geo/prefecture.geojson`・`data/geo/adjacency_iryoken2.csv`・`data/geo/adjacency_diagnostics.md`(詳細は [data/geo/README.md](../data/geo/README.md)) |
 | `python scripts/build_population.py` | `data/processed/population_iryoken2.csv`・`data/processed/population_prefecture.csv`(詳細は [data/processed/README.md](../data/processed/README.md)) |
 
-### 未着手
+### 年齢階級別人口・65歳以上人口(issue #28、着手済み)
 
-年齢階級別人口・65歳以上人口は e-Stat からの取得が別途必要で未着手
-(`area_basic.csv` には総人口しか無い)。
+年齢階級別人口・65歳以上人口は`area_basic.csv`には無く、上記の人口データ
+(`population_iryoken2.csv`・`population_prefecture.csv`)には総人口しか
+含まれていなかった。issue #28 で e-Stat から取得し、年齢列として追加した。
+詳細は次の「年齢階級別人口(2020年国勢調査、issue #28)」節を参照。
 
 なお隣リポジトリの `iryoken2_A38-20.geojson`(335圏、生のA38属性)は
 `A38b_007`〜`A38b_011` という人口らしき数値属性を持つ。年齢階級別人口を
-含む可能性があるが、**各属性が何を指すかは国土数値情報の仕様書で未確認**
-のため今回は使っていない。年齢階級別人口が必要になった時点で、仕様書で
-確認したうえで e-Stat と比較検討する。
+含む可能性があったが、**各属性が何を指すかは国土数値情報の仕様書で未確認**
+のため issue #28 では使わなかった(下記のとおり e-Stat から直接取得する
+経路を採用した)。
+
+## 年齢階級別人口(2020年国勢調査、issue #28)
+
+339構想区域・47都道府県の人口(`population_iryoken2.csv`・
+`population_prefecture.csv`)に、年齢5歳階級・65歳以上人口の列を追加した。
+上記「境界データ・人口データ」節の人口(総人口)とは異なり、このデータは
+隣リポジトリ経由ではなく **e-Stat から直接取得している**(隣リポジトリの
+`area_basic.csv`/`prefecture_basic.csv` には年齢階級の内訳が無いため)。
+
+| 項目 | 内容 |
+|---|---|
+| 出典名 | 令和2年国勢調査 人口等基本集計 第2-7表「男女，年齢（5歳階級及び3区分），国籍総数か日本人別人口，平均年齢，年齢中位数及び人口構成比 － 全国，都道府県，市区町村」 |
+| 発行者 | 総務省統計局 |
+| URL(直接ダウンロード) | <https://www.e-stat.go.jp/stat-search/file-download?statInfId=000032142410&fileKind=0>(匿名ダウンロード、xlsx。`fileKind=1`はHTTP 404のHTMLが返るため使わない) |
+| URL(参考、この表のファイルページ) | <https://www.e-stat.go.jp/stat-search/files?stat_infid=000032142410>(統計表・ファイル一覧のページ。statInfId `000032142410` = 第2-7表そのもの) |
+| URL(参考、DB版の相当表) | <https://www.e-stat.go.jp/stat-search/database?statdisp_id=0003445162>(表2-7-1「男女，年齢（5歳階級），国籍総数か日本人別人口」のデータベース(統計表表示ID/statdisp_id `0003445162`)。第2-7表とは**別の表**で、ファイル一覧と同一のものではない) |
+| 取得日(UTC) | 2026-08-18T07:19:27Z |
+| バイト数 | 8,535,914 |
+| SHA-256 | `114f2343dfaaa048614b0283830070b2048cae7da67a38df96c83039c6d0ac75` |
+| ライセンス／利用条件 | 政府統計の総合窓口(e-Stat)利用規約(政府標準利用規約(第2.0版)準拠)。二次利用・出典明記のうえでの利用が可能 |
+| 生成コマンド | `python scripts/fetch_census_age.py`(取得)→ `python scripts/build_population_age.py`(整備) |
+| 出力 | `data/processed/population_iryoken2.csv`・`population_prefecture.csv`(年齢列を追加)、`data/processed/population_iryoken2_age_sex.csv`・`population_prefecture_age_sex.csv`(性別内訳)、`data/processed/municipality_to_iryoken2.csv`(市区町村→構想区域の対応表)、`data/processed/population_age_audit.csv`(監査表)。列の詳細は [data/processed/README.md](../data/processed/README.md) |
+
+### 市区町村→構想区域(339)の対応表について
+
+年齢階級別人口は国勢調査では市区町村単位でしか公表されないため、これを
+339構想区域に積み上げるには市区町村→構想区域の対応表が必要になる。
+issue #4/#5 で使った隣リポジトリの `iryoken2_A38-20.geojson`(335圏、
+令和2年度時点の二次医療圏)をそのまま使うことは**できなかった**。
+
+- `iryoken2_A38-20.geojson` は335圏(令和2年度)単位であり、R7(339区域)
+  とは三重県で粒度が異なる(三重県の旧4圏域(2401〜2404)がR7で8区域
+  (2405〜2412)に細分化されている)。335圏のまま集計すると三重県の
+  8区域を作れない。
+- そのため issue #28 では、隣リポジトリの `area_geo_join.csv`
+  (A38の335圏とR7の339区域の対応表、331件がmatched)で `A38b_001`
+  (構成市区町村コードのカンマ区切り)を使えるものはそのまま使い、
+  三重県の12件(すべてunmatched)だけは隣リポジトリの
+  `data/reference/mie_area_municipalities.csv`(三重県公式資料+A38突合で
+  作成済みの29市町対応表)で置き換えた。**「医療施設調査」由来の対応表は
+  使っていない**(335圏ベースであり、同じ理由でR7の339区域(三重県の
+  細分化)を再現できないため)。
+- 市区町村の集合(1,896件、政令指定都市の区を含む)が、令和2年国勢調査の
+  市区町村行の集合と完全一致することを `scripts/build_population_age.py`
+  がハード検算している(詳細は同スクリプトのdocstringと
+  [data/processed/README.md](../data/processed/README.md))。
+
+### 生成コマンド・出力(issue #28)
+
+| 生成コマンド | 出力 |
+|---|---|
+| `python scripts/fetch_census_age.py` | `data/raw/census_age_2020_table2-7.xlsx`(gitignore対象、上記SHA-256で取得を検証) |
+| `python scripts/build_population_age.py` | 上表「出力」を参照 |
 
 ## 施設の座標データ(issue #9)
 

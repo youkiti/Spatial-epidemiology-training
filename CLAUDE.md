@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 系統 | issue | この環境で動かせるか |
 |---|---|---|
-| Phase1 データ整備 | #4・#7・#8 完了。#9（施設の二次医療圏割付）も完了（診療の場のみ・主系列の割付率85.9%、詳細は下記）。**#5（人口）は年齢階級別人口が未取得のため未完了**（総人口のみ取得済み。詳細は下記「Phase1のデータ整備状況」） | e-Stat からの年齢階級別人口取得が要る |
+| Phase1 データ整備 | **完了。** #4・#5・#7・#8 に加え、#9（施設の二次医療圏割付、主系列の割付率85.9%）と #28（年齢階級別人口）も入った。詳細は下記「Phase1のデータ整備状況」 | 残作業なし |
 | Phase2 引用の裏取り | #16 実例論文2本の一次資料での確認 | 論文全文にアクセスできれば可 |
 | Phase3 ハンズオン | #17 Rmd 配管 → #18〜#20 | **不可**。R が要る。#17 が #18〜#20 の前提 |
 
@@ -62,7 +62,11 @@ overrides/       404.html のテーマオーバーライド
   が検算している。詳細は `data/processed/README.md` と
   [docs/handson/04-case-study.md](docs/handson/04-case-study.md) 「データの制約」節
 - **人口**（`data/processed/population_iryoken2.csv` / `population_prefecture.csv`）は
-  総人口のみ。年齢階級別は未取得（issue #5 の残り）
+  総人口（`population_2020`）に加え、**5歳階級・65歳以上の列を持つ**（`pop_0_4` 〜
+  `pop_85plus` / `pop_65plus` ほか24列。issue #28 で e-Stat から直接取得。男女別は
+  `population_*_age_sex.csv` が別に持つ）。医師偏在の文脈で需要指標による標準化を
+  するときはこれを使う。出典と取得経路は
+  [documents/DATA_SOURCES.md](documents/DATA_SOURCES.md) の「年齢階級別人口」節
 
 ### コマンド
 
@@ -152,11 +156,16 @@ python scripts/verify_facility_linkage.py  # 施設の名寄せ・二次医療�
 
 ### 教材として使う実例論文
 
-- Blazel MM, et al. *JAMA Netw Open.* 2024;7:e2429764 — 高血圧。地図 → Moran's I → Bayesian CAR Poisson model。**Moran → 空間回帰**まで通す例
-- Pradhan P, Iyer HS, Rebbeck TR. *JAMA Netw Open.* 2025;8:e2537905 — 米国 counties のがん検診。queen contiguity → Global Moran's I → LISA。**Global → Local の対比**を見せる例
+- Blazel MM, et al. *JAMA Netw Open.* 2024;7(8):e2429764 — 高血圧。地図 → Moran's I → Bayesian CAR Poisson model。**Moran → 空間回帰**まで通す例
+- Pradhan P, Iyer HS, Rebbeck TR. *JAMA Netw Open.* 2025;8(10):e2537905 — 米国3,142 counties のがん検診。queen contiguity → Global Moran's I → LISA。**Global → Local の対比**を見せる例
 - 総説4本: Elliott & Wartenberg 2004 (EHP)、Auchincloss et al. 2012 (Annu Rev Public Health)、Beale et al. 2008 (EHP)、Hu et al. 2025 (Front Public Health)
 
-**これらの統計値・書誌情報は対話ログ由来で、一次資料での裏取りが済んでいない（issue #16 の担当）。** 具体的な数値を断定的に書かないこと。
+**これらの統計値・書誌情報は一次資料で裏取り済み（2026-08-18、issue #16）。確認した数値と原文の該当箇所は [documents/引用検証.md](documents/引用検証.md) が正本。** 教材本文に数値を足すときは、まずこの文書に原著の該当箇所を引いてから足すこと（memo.md 由来の数値をそのまま載せない、という原則は変わらない）。
+
+裏取りで出た、書くときに間違えやすい2点:
+
+- **Pradhan 2025 の LISA は bivariate LISA** で、high/high・high/low は「自分と周囲」ではなく**時点間の推移**（一貫して高い／高から低へ変化した）を意味する。章4が教える univariate LISA の4分類とは語義が違う。この論文の LISA 結果を引くときは必ず違いに触れる
+- **Blazel 2024 は隣接（空間重み行列）の定義を明示していない。** 「queen contiguity を使った」と書かない（それは Pradhan 側）
 
 ## 環境（検証済み・2026-08-18）
 
