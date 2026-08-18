@@ -4,37 +4,83 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## このリポジトリの現状
 
-**まだ何も実装されていない。** 存在するのは [docs/memo.md](docs/memo.md) 1ファイルのみで、git リポジトリですらない（`git init` 未実施）。ビルド・テスト・リントのコマンドは存在しない。「既存コードを読んで合わせる」対象がないので、最初の構造を作るときは下記「未決定事項」をユーザーに確認してから着手すること。
+**Phase0 完了（2026-08-18）。** 設計文書・サイト骨格・クイズエンジンが main に入り、GitHub Pages で公開されている。
+
+公開先: <https://youkiti.github.io/Spatial-epidemiology-training/>
+
+```
+documents/       設計の正本3文書。実装より先にここを読む
+docs/            MkDocs のサイトソース。ここに置いたものは公開される
+  concepts/      概念パート6章（本文はプレースホルダ。issue #10〜#15 で執筆）
+  handson/       Rハンズオン4本（プレースホルダ）
+  assets/js/     クイズエンジン（storage.js → quiz.js → progress.js）
+  assets/data/   クイズJSON（章1のものは engine 検証用の仮設問。issue #10 で差し替え）
+  memo.md        ユーザーとの対話ログ。exclude_docs でサイトからは除外している
+scripts/         quiz_lint.py（作問の機械チェック）
+overrides/       404.html のテーマオーバーライド
+```
+
+### コマンド
+
+```bash
+pip install -r requirements.txt
+mkdocs build --strict          # CI と同じ検査。警告ゼロ・exit 0 で通ること
+mkdocs serve                   # クイズは fetch を使うので file:// 直開きでは動かない
+python scripts/quiz_lint.py    # クイズJSONの testwiseness cue 検査
+```
+
+ビルド出力の読み方に罠がある:
+
+- 出力に出る "Warning from the Material for MkDocs team"（MkDocs 2.0 の告知）は**ビルド警告ではない**。警告ゼロの判定に数えない
+- `git-revision-date-localized` の `has no git logs` も同様で、プラグインが直接 print しており `--strict` を落とさない。つまり **CI から `fetch-depth: 0` を外してもビルドは緑のまま、各ページの更新日時だけが静かに壊れる**。外さないこと
+- Windows では出力をパイプに繋ぐと `$?` が `tail` 側の終了コードになる。ログにリダイレクトして終了コードを直接見ること
+
+### 設計の正本は documents/ にある
+
+**新しい章・クイズ・ハンズオンを作る前に、必ずこの3文書を読むこと。** 以降の実装はここに拘束される。
+
+| 文書 | 何が決まっているか |
+|---|---|
+| [documents/要件定義書.md](documents/要件定義書.md) | 目的・想定読者・設計原則・技術構成・非目標・TBD |
+| [documents/カリキュラム設計.md](documents/カリキュラム設計.md) | 6章の学習目標とクイズ問数、**章↔issue 対応表**、ハンズオン4本 |
+| [documents/作問ガイドライン.md](documents/作問ガイドライン.md) | 作問原則と lint 閾値。`scripts/quiz_lint.py` の正本 |
+
+[docs/memo.md](docs/memo.md) はこの3文書の元になった対話ログ。一次資料として残してあるが、**食い違ったら documents/ が優先**。
+
+### サイト実装で守ること（既知の罠）
+
+- **`theme.features` に `navigation.instant` を入れない。** 全JSがフルページロード前提の初期化のため、SPA的ページ遷移では描画されなくなる
+- **`extra_javascript` の読み込み順は依存順**（`storage.js` → `quiz.js` → `progress.js`）。変えない
+- **クイズはページとJSをデータ属性で疎結合にする契約。** `data-quiz-gate` **無し**=自己チェック（合否は出すが保存しない）、**有り**=章末クイズ（合格を localStorage に保存）。`data-quiz-src` のパスは directory URL 基準の相対
+- **クイズJSONスキーマは ai-kotohajime と同一に保つ**: `{title, passRatio, questions:[{q, choices[4], answer, explanation}]}`。**`answer` は 0-origin**
+- **`extra.css` にハードコード色を足すときは、ダーク（slate）配色の上書きも必ず併せて書く。** 特に文字色は暗背景でコントラストが落ちる
+- 404 は `docs/404.md` では機能しない。テーマの静的テンプレート `404.html` が常に優先され、GitHub Pages はルートの `404.html` しか配信しない。`overrides/404.html` のリンクは**ルート相対**（`/Spatial-epidemiology-training/...`）で書く
+- 作問の lint 閾値を変えるときは、`documents/作問ガイドライン.md` §3 と `scripts/quiz_lint.py` を**同時に**改訂する
 
 ## プロジェクトの目的
 
-**一定の疫学の素養がある読者向けの、空間疫学（地理疫学）教材**。最終形は公開ページで、2つのパートからなる:
+**一定の疫学の素養がある読者向けの、空間疫学（地理疫学）教材。** 2つのパートからなる:
 
-1. **概念パート** — 理論・ビジュアル・具体例を*並列に*提示し、クイズを解きながら進む形式。「読んで終わり」ではなく、各概念に理解確認のクイズが紐づく設計が要求されている。
-https://github.com/youkiti/ai-kotohajime
-このレポジトリの設計思想を輸入してほいい
+1. **概念パート** — 理論・ビジュアル・具体例を*並列に*提示し、クイズを解きながら進む。各概念に理解確認のクイズが紐づく
+2. **Rハンズオン（Rmd）** — 同じ概念を R で手を動かして再現する
 
-2. **Rハンズオン（Rmd）** — 同じ概念を R で手を動かして再現する。
+設計思想は <https://github.com/youkiti/ai-kotohajime> から輸入している（同一著者。クイズエンジンの移植元でもある）。
 
 ### 題材（ケーススタディ）
 
-**感染症専門医の地域偏在の可視化。** データ源は日本感染症学会の専門医名簿 PDF:
-https://www.kansensho.or.jp/uploads/files/senmoni/meibo_260701.pdf （2026-07-01 版）
+**感染症専門医の地域偏在の可視化。** データ源は日本感染症学会の専門医名簿 PDF（2026-07-01 版）:
+<https://www.kansensho.or.jp/uploads/files/senmoni/meibo_260701.pdf>
 
-このPDFはリポジトリにまだ無い。取り込む際の注意:
+**このPDFはリポジトリにまだ無い。** 取り込む際の注意:
 
-- 名簿は**個人名と所属を含む**が公開データであるため処理することに問題はない。
-　レポジトリでは加工過程のコードと出力される図表のみを保持する。
-　今後、データにアクセスできなくなったときのため、シミュレーションデータでも動かせるようにする
+- 名簿は個人名と所属を含むが公開データであるため処理してよい。**リポジトリには加工過程のコードと出力図表のみを保持する**（`data/raw/` と `data/interim/` は `.gitignore` 済み）
+- データにアクセスできなくなったときのため、**シミュレーションデータでも全章が走る**ようにする
+- **分子（専門医数）だけを地図にしてはいけない** — 教材自身が「落とし穴」で戒めている誤りそのもの。人口（分母）と対にして人口10万対専門医数を出す。医師偏在の文脈では需要指標（高齢者割合など）での標準化も検討対象
+- PDF は改訂されうる。取得日をファイル名かメタデータに残す
 
-- 分子（専門医数）だけを地図にしてはいけない — これは教材自身が「15. 落とし穴」で戒めている誤りそのもの。人口（分母）と対にして人口10万対専門医数を出す。医師偏在の文脈では患者側の需要指標（高齢者割合など）での標準化も検討対象。
-- PDF は改訂されうる。取得日をファイル名かメタデータに残す。
+## 教材の骨格
 
-## 教材の骨格（docs/memo.md より）
-
-[docs/memo.md](docs/memo.md) はユーザーとの対話ログで、**教材のカリキュラム設計そのもの**。新しい章やクイズを作るときはここの構成に従う。要点:
-
-### 3段階の骨格（これが最初に教える型）
+章立て・学習目標・クイズ問数の確定版は [documents/カリキュラム設計.md](documents/カリキュラム設計.md) にある。以下はその要点。
 
 | 段階 | 質問 | 手法 |
 |---|---|---|
@@ -44,18 +90,18 @@ https://www.kansensho.or.jp/uploads/files/senmoni/meibo_260701.pdf （2026-07-01
 
 ### 教材が最重要視している論点
 
-- **「地図を描く」と「空間統計」は別物。** 色を塗っただけでは「本当に集まっている」とは言えない、という区別が教材全体の出発点。
-- **Gi\* / LISA / SaTScan の違い。** memo.md の後半（635行目以降）がまるごとこの説明に費やされている＝ユーザーが明示した躓きポイント。Gi\* は「塊探し」、LISA は「自分と周囲の関係の分類」（High-High / Low-Low / High-Low / Low-High）、SaTScan は「異常に患者が多い地理的範囲の探索」。特に **「値が高い」と「hot spot である」は別**（周囲が低ければ単独の高値は High-Low の空間的アウトライヤーであって hot spot ではない）という区別を、必ず具体的な数値グリッドで示すこと。
-- **空間重み行列（「隣」の定義）を先に決める。** 普通の統計に無い発想として強調されている。queen contiguity / 距離閾値。
-- **5つの落とし穴** — 人口の多さの無視、小地域の少数例による率の不安定、MAUP（Modifiable Areal Unit Problem）、地域レベルの関連を個人の因果と取り違える（生態学的誤謬）、「隣」の定義の事後決定。
+- **「地図を描く」と「空間統計」は別物。** 色を塗っただけでは「本当に集まっている」とは言えない、という区別が教材全体の出発点
+- **Gi\* / LISA / SaTScan の違い**（memo.md 635行目以降がまるごとこの説明＝ユーザーが明示した躓きポイント）。Gi\* は「塊探し」、LISA は「自分と周囲の関係の分類」（High-High / Low-Low / High-Low / Low-High）、SaTScan は「異常に患者が多い地理的範囲の探索」。特に **「値が高い」と「hot spot である」は別**（周囲が低ければ単独の高値は High-Low の空間的アウトライヤーであって hot spot ではない）という区別を、必ず具体的な数値グリッドで示すこと
+- **空間重み行列（「隣」の定義）を先に決める。** 普通の統計に無い発想として強調する。queen contiguity / 距離閾値
+- **5つの落とし穴** — 人口の多さの無視、小地域の少数例による率の不安定、MAUP、生態学的誤謬、「隣」の定義の事後決定
 
 ### 教材として使う実例論文
 
-- Blazel MM, et al. *JAMA Netw Open.* 2024;7:e2429764 — 高血圧。地図 → Moran's I (0.58, P<.001) → Bayesian CAR Poisson model。**Moran → 空間回帰**まで通す例。
-- Pradhan P, Iyer HS, Rebbeck TR. *JAMA Netw Open.* 2025;8:e2537905 — 米国3,142 counties のがん検診。queen contiguity → Global Moran's I → LISA。**Global → Local の対比**を見せる例（マンモ検診 I=0.57→0.10 と経時低下、それでも LISA では Northeast に high-high、Southwest に low-low が残る）。
-- 総説4本: Elliott & Wartenberg 2004 (EHP)、Auchincloss et al. 2012 (Annu Rev Public Health)、Beale et al. 2008 (EHP)、Hu et al. 2025 (Front Public Health)。
+- Blazel MM, et al. *JAMA Netw Open.* 2024;7:e2429764 — 高血圧。地図 → Moran's I → Bayesian CAR Poisson model。**Moran → 空間回帰**まで通す例
+- Pradhan P, Iyer HS, Rebbeck TR. *JAMA Netw Open.* 2025;8:e2537905 — 米国 counties のがん検診。queen contiguity → Global Moran's I → LISA。**Global → Local の対比**を見せる例
+- 総説4本: Elliott & Wartenberg 2004 (EHP)、Auchincloss et al. 2012 (Annu Rev Public Health)、Beale et al. 2008 (EHP)、Hu et al. 2025 (Front Public Health)
 
-memo.md の末尾は「架空の10市町村データで ①地図 → ②Moran's I → ③LISA map → ④Gi* map → ⑤CARモデル と順に見せる」構成を提案している。Rハンズオンの雛形はこれに沿わせるのが自然。ただし**最終的な題材は架空データではなく感染症専門医名簿**なので、架空データは概念導入用、実データはケーススタディ用、と役割を分けるか統一するかはユーザーに確認する。
+**これらの統計値・書誌情報は対話ログ由来で、一次資料での裏取りが済んでいない（issue #16 の担当）。** 具体的な数値を断定的に書かないこと。
 
 ## 環境（検証済み・2026-08-18）
 
@@ -67,42 +113,37 @@ memo.md の末尾は「架空の10市町村データで ①地図 → ②Moran's
 | Node / npm | 22.21.0 / 10.9.4 |
 | Python | 3.11.9 |
 
-R パッケージのインストール状況:
+サイト側の依存は `requirements.txt` にピン留め済み（mkdocs 1.6.1 / mkdocs-material 9.7.6 / mkdocs-git-revision-date-localized-plugin 1.5.3）。**CI に R は入れない** — Rmd は事前レンダリングして成果物をコミットする。
+
+R パッケージ:
 
 - **導入済み**: `sf` 1.0.21, `spdep` 1.4.1, `spatialreg` 1.4.2, `ggplot2` 4.0.1, `dplyr` 1.1.4, `rmarkdown` 2.30, `knitr` 1.50
-- **未導入**（この教材で必要になりうる）: `tmap`, `sfdep`, `leaflet`, `SpatialEpi`, `CARBayes`, `INLA`, `jpndistrict`, `NipponMap`
+- **未導入**: `tmap`, `sfdep`, `leaflet`, `SpatialEpi`, `CARBayes`, `INLA`, `jpndistrict`, `NipponMap`
 
-Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test` / `localmoran` / `localG`）ので、段階1〜2 は追加インストールなしで書ける。CAR/BYM（段階3）に進む時点で `CARBayes` か `INLA` の選択が必要になる。**`INLA` は CRAN ではなく専用リポジトリからの導入**で、教材の読者に要求するハードルが `CARBayes` より高い点に注意。
+Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test` / `localmoran` / `localG`）ので、段階1〜2 は追加インストールなしで書ける。CAR/BYM に進む時点で `CARBayes` か `INLA` の選択が必要。**`INLA` は CRAN ではなく専用リポジトリからの導入**で、読者に要求するハードルが `CARBayes` より高い。
 
-※最終的にレポジトリにrequirementは入れる
+**R側の依存マニフェスト（`renv.lock` 等）はまだ無い。** Rハンズオン（issue #17〜#20）に着手する時点で入れる。
 
-Rmd のレンダリング確認:
+## 決定済み（もう議論しない）
 
-```bash
-Rscript -e 'rmarkdown::render("path/to/file.Rmd")'
-```
+過去に未決定だった項目のうち、以下は決着している。詳細と理由は [documents/要件定義書.md](documents/要件定義書.md)。
+
+- **公開ページの実装手段** = Material for MkDocs + GitHub Pages（Quarto Website ではない）
+- **地域単位** = 二次医療圏をメイン、都道府県も併走（MAUP の実演を兼ねる）
+- **記述言語** = 日本語のみ（i18n は入れない）
+- **境界データの入手元** = 国土数値情報の医療圏データ（A38）。隣接リポジトリ <https://github.com/youkiti/visualize-regional-medical-care-for-2040> の `doc/DATA_SOURCES.md` に取得手順と罠が文書化されている
+- **架空データと実データの役割分担** = 架空の10市町村データは概念導入用、専門医名簿はケーススタディ専用
 
 ## 未決定事項（実装前にユーザーに確認する）
 
-1. **公開ページの実装手段。** Quarto が入っているので Quarto Website が第一候補（Rmd ハンズオンと概念パートを同一プロジェクトで扱え、`quarto render` 一発になる）だが、クイズのインタラクティブ性（採点・即時フィードバック）をどこまで求めるかで変わる。Quarto + 自前JS か、別の静的サイトか。
-github pagesを使う　
-https://github.com/youkiti/ai-kotohajime　の思想を輸入
-
-2. **公開先。** GitHub Pages を想定するなら `git init` → GitHub リポジトリ作成が先。`prep-claude-cloud` スキルがこの整備を担当できる。
-3. **地域単位。** 都道府県（47）か二次医療圏（約330）か市区町村か。MAUP の教材でもあるので、複数単位で結果が変わることを見せる構成もありうる。
-2次医療圏をメイン、都道府県でもやってみよう
-
-4. **境界データ（ポリゴン）の入手元。** 国土数値情報 / e-Stat（統計GIS）など。ライセンス表示の要否とファイルサイズ（リポジトリに直接置くか、取得スクリプトにするか）を決める。
-https://github.com/youkiti/visualize-regional-medical-care-for-2040
-ここに地図を作ったときの資料があるから、病院の住所も含めて参照して
-
-
-5. **言語。** memo.md は日本語。公開ページも日本語で書く前提でよいか。
-はい
+1. **ライセンス**（CC BY 4.0 が候補）
+2. **修了証（目録）を出すか** — ai-kotohajime には `certificate.js` があるが移植していない
+3. **SaTScan を実演するか、概念紹介にとどめるか** — 章4で考え方は必ず扱うが、別ソフトウェアを動かすハンズオンにするかは未決
+4. **CAR/BYM の実装を `CARBayes` にするか `INLA` にするか** — issue #19 着手時に確定する
+5. **簡略化 GeoJSON を隣接判定に使ってよいか** — 隣接リポジトリの `iryoken2_A38-20.geojson` は「表示専用」と明記されている（離島除去・2%簡略化・座標丸め）。これらは **queen contiguity の隣接関係そのものを変えうる**。簡略化前のポリゴンを使うか、隣接関係が保存されるか検証するかは issue #4 の論点
 
 ## 執筆上の注意
 
-- memo.md 中の統計値・論文情報は対話ログ由来で、**一次資料での裏取りが済んでいない**。
-これは執筆の際にちゃんとsonnet使って確認して
-公開ページに載せる数値（Moran's I の値、prevalence ratio、論文の書誌情報など）は原著で確認すること。`verify-slide-citations` スキルが引用検証に使える。
-- 読者は疫学の素養がある前提。率・標準化・交絡の基礎説明は省いてよいが、**空間統計に固有の概念**（空間自己相関、空間重み行列、MAUP、空間的アウトライヤー）は丁寧に扱う。
+- 読者は疫学の素養がある前提。率・標準化・交絡の基礎説明は省いてよいが、**空間統計に固有の概念**（空間自己相関、空間重み行列、MAUP、空間的アウトライヤー）は丁寧に扱う
+- 公開ページに載せる数値（Moran's I の値、prevalence ratio、論文の書誌情報など）は**原著で確認する**。memo.md 由来の数値をそのまま載せない。`verify-slide-citations` スキルが引用検証に使える
+- クイズを書いたら `python scripts/quiz_lint.py` を通す。**閾値を緩めて通すのではなく、設問と選択肢の方を直す**。日本語の四択では L3（選択肢の最長/最短比 1.5 以内）と L2（正答肢長/平均 0.8〜1.3）が特に効く
