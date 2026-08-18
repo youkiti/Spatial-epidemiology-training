@@ -16,7 +16,8 @@ CSVが生成される(`random.Random(seed)` の専用インスタンスのみを
 グローバルな `random` モジュールの状態には依存しない)。
 
 検証は `scripts/verify_simulation.py`(標準ライブラリのみ)と、その再確認用の
-`scripts/verify_simulation.R`(spdep使用。**この開発環境にはRが無いため未実行**)
+`scripts/verify_simulation.R`(spdep使用。**Rは `C:\Program Files (x86)\R\R-4.5.2\bin\Rscript.exe`
+に導入済みで spdep も入っている。PATHには無いため、呼び出す際はフルパスを使うこと**)
 で行う。
 
 ## ファイル一覧
