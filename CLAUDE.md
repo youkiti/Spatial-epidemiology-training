@@ -17,10 +17,24 @@ docs/            MkDocs のサイトソース。ここに置いたものは公�
   assets/data/   クイズJSON（全6章分。`quiz-chN-selfcheck.json` と `quiz-chN.json`）
   memo.md        ユーザーとの対話ログ。exclude_docs でサイトからは除外している
 scripts/         quiz_lint.py（作問の機械チェック）、simulate_spatial_data.py と
-                 verify_simulation.py（合成データの生成と検証。issue #6）
+                 verify_simulation.py（合成データの生成と検証。issue #6）、
+                 fetch_meibo.py / parse_meibo.py（専門医名簿PDFの取得と抽出。issue #7・#8）、
+                 build_geo.R（境界データと隣接関係の生成。issue #4）、
+                 build_population.py（人口データの取得。issue #5）
 data/simulated/  上記生成器の出力CSV（合成データなのでコミットしている）
+data/geo/        二次医療圏・都道府県の境界データと queen contiguity。詳細は data/geo/README.md
+data/processed/  専門医数CSV（都道府県別・施設別）と人口CSV（詳細は「Phase1のデータ整備状況」）
 overrides/       404.html のテーマオーバーライド
 ```
+
+### Phase1のデータ整備状況
+
+- **都道府県別の専門医数**（`data/processed/specialists_prefecture.csv`）は名簿PDFの
+  公式集計（1ページ目）由来で完全
+- **二次医療圏レベルの分子**（`data/processed/specialists_facility.csv`）は名簿本体
+  （施設ベース）由来で、施設の座標割付が未了（issue #9）のため二次医療圏には未集計
+- **人口**（`data/processed/population_iryoken2.csv` / `population_prefecture.csv`）は
+  総人口のみ。年齢階級別は未取得（issue #5 の残り）
 
 ### コマンド
 
@@ -132,6 +146,12 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 
 **`spdep::mat2listw()` はこの環境でプロセス終了時にクラッシュする。** R の出力自体は最後まで正常に出るが、終了時にスタックオーバーフローで異常終了する（Windows 終了コード 0xC00000FD、Git Bash 経由では 127）。行列サイズによらず再現し、`rm()` / `gc()` / `quit(status=0)` でも回避できないため、`Rscript foo.R && echo ok` が決して成功しない。**どうするか**: `nb` オブジェクトを隣接エッジ一覧から直接組み立てて `nb2listw()` に渡す（密な隣接行列を経由しない）。`scripts/verify_simulation.R` がその実装例。
 
+**`spdep::poly2nb()` も同じくプロセス終了時に落ちる**（Git Bash 経由で終了コード 255）。`mat2listw()` と同種だが、今回は `poly2nb()` 自体がトリガー。実ポリゴンから隣接を導くのに `poly2nb()` は避けられないため、**呼び出しだけを子プロセスの `Rscript` に切り出し、結果をCSVに書かせてから親が読み戻す**のが回避策（`scripts/build_geo.R` が実装例）。**終了コードで成否を判定しないこと** — 代わりに (a) 出力先が毎回新しい tempdir か、(b) 子が完了マーカーを stdout に出したか、で判定する。ファイルの存在チェックだけだと、書き込み途中で切れたCSVを黙って読んでしまう。
+
+**実ポリゴンを扱うときは `sf::sf_use_s2(FALSE)` が要る。** s2 有効のままだと `st_make_valid()` が一部ジオメトリを修復しきれず（実測: 新宮 3007）、`poly2nb()` がさらに強く落ちる。A38 由来の339区域では7件が `st_is_valid()` で不正、s2 を切れば `st_make_valid()` で全件修復できる。
+
+**`pip install -r requirements.txt` は Windows ローカルで失敗する。** `requirements.txt` に日本語コメントがあるため pip が locale（cp932）で読もうとして `UnicodeDecodeError`。**`PYTHONUTF8=1` を付ければ通る。** CI（ubuntu-latest）は UTF-8 locale なので起きない。**しかも pip が終了コード0を返すことがあり**、あとで `No module named mkdocs` で気づくことになる。
+
 `scripts/verify_simulation.R` は R 4.5.2 / spdep 1.4.1 で実行・検証済み（2026-08-18）で、Python 版と出力が一致することを確認済み。
 
 **R側の依存マニフェスト（`renv.lock` 等）はまだ無い。** Rハンズオン（issue #17〜#20）に着手する時点で入れる。
@@ -145,6 +165,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 - **記述言語** = 日本語のみ（i18n は入れない）
 - **境界データの入手元** = 国土数値情報の医療圏データ（A38）。隣接リポジトリ <https://github.com/youkiti/visualize-regional-medical-care-for-2040> の `doc/DATA_SOURCES.md` に取得手順と罠が文書化されている
 - **架空データと実データの役割分担** = 架空の10市町村データは概念導入用、専門医名簿はケーススタディ専用
+- **簡略化済み（表示専用）GeoJSON を隣接判定に使ってよいか** = 使ってよい。`snap=0` と `snap=0.0001`（座標丸め幅と同程度）で queen contiguity の隣接ペアが完全一致した（1,558件、集合差0件）ため、0.0001度丸めは隣接判定に影響していない。本採用は `snap=0`。測定手順と全診断は `scripts/build_geo.R` と `data/geo/adjacency_diagnostics.md`
 
 ## 未決定事項（実装前にユーザーに確認する）
 
@@ -152,7 +173,6 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 2. **修了証（目録）を出すか** — ai-kotohajime には `certificate.js` があるが移植していない
 3. **SaTScan を実演するか、概念紹介にとどめるか** — 章4で考え方は必ず扱うが、別ソフトウェアを動かすハンズオンにするかは未決
 4. **CAR/BYM の実装を `CARBayes` にするか `INLA` にするか** — issue #19 着手時に確定する
-5. **簡略化 GeoJSON を隣接判定に使ってよいか** — 隣接リポジトリの `iryoken2_A38-20.geojson` は「表示専用」と明記されている（離島除去・2%簡略化・座標丸め）。これらは **queen contiguity の隣接関係そのものを変えうる**。簡略化前のポリゴンを使うか、隣接関係が保存されるか検証するかは issue #4 の論点
 
 ## 執筆上の注意
 
