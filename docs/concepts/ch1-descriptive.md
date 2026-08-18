@@ -51,13 +51,13 @@
 | D市 | 20,000 | 40 | 200 |
 | E町 | 5,000 | 15 | 300 |
 
-患者数だけで順位をつけると A(100)>C(60)>D(40)>B(20)>E(15) ですが、率で順位をつけると B(2,000)>E(300)>D(200)>C(120)>A(100) と、ほぼ逆転します。下の図は、この2つの塗り分けを色の濃淡(不透明度)で表したものです。
+患者数だけで順位をつけると A(100)>C(60)>D(40)>B(20)>E(15) ですが、率で順位をつけると B(2,000)>E(300)>D(200)>C(120)>A(100) と、ほぼ逆転します。下の図は、この2つの塗り分けを塗りの強さ(不透明度)で表したものです。
 
 <figure>
 <svg viewBox="0 0 640 220" role="img" style="max-width:100%;height:auto" aria-labelledby="fig1-title fig1-desc">
 <title id="fig1-title">患者数の地図と人口10万対の率の地図の対比(架空5市町村)</title>
-<desc id="fig1-desc">同じ5市町村を、患者数で塗った場合と人口10万対の率で塗った場合で、色が濃い市町村が入れ替わることを示す図。数値は表1と同じ。</desc>
-<text x="10" y="24" fill="currentColor" font-size="15">患者数の地図(色が濃い = 患者数の順位が高い、5段階)</text>
+<desc id="fig1-desc">同じ5市町村を、患者数で塗った場合と人口10万対の率で塗った場合で、塗りが強い市町村が入れ替わることを示す図。数値は表1と同じ。</desc>
+<text x="10" y="24" fill="currentColor" font-size="15">患者数の地図(塗りが強い = 患者数の順位が高い、5段階)</text>
 <g font-size="13">
 <rect x="10" y="36" width="100" height="60" fill="currentColor" fill-opacity="0.45" stroke="currentColor"/>
 <text x="60" y="60" text-anchor="middle" fill="currentColor">A</text>
@@ -75,7 +75,7 @@
 <text x="500" y="60" text-anchor="middle" fill="currentColor">E</text>
 <text x="500" y="80" text-anchor="middle" fill="currentColor">15</text>
 </g>
-<text x="10" y="130" fill="currentColor" font-size="15">率の地図(色が濃い = 人口10万対の率の順位が高い、5段階)</text>
+<text x="10" y="130" fill="currentColor" font-size="15">率の地図(塗りが強い = 人口10万対の率の順位が高い、5段階)</text>
 <g font-size="13">
 <rect x="10" y="142" width="100" height="60" fill="currentColor" fill-opacity="0.05" stroke="currentColor"/>
 <text x="60" y="166" text-anchor="middle" fill="currentColor">A</text>
@@ -94,10 +94,10 @@
 <text x="500" y="186" text-anchor="middle" fill="currentColor">300</text>
 </g>
 </svg>
-<figcaption>表1の架空データ。数値ラベルは表1と同一。色の濃淡は数値そのものではなく5市町村内での順位を表す(最も濃い0.45が1位、最も薄い0.05が5位)。上段は患者数、下段は人口10万対の率で塗り分けている。A市は患者数の地図では最も濃い(1位)が、率の地図では最も薄い(5位)。逆にB町はその反対になる。</figcaption>
+<figcaption>表1の架空データ。数値ラベルは表1と同一。塗りの強さは数値そのものではなく5市町村内での順位を表す(最も強い0.45が1位、最も弱い0.05が5位)。塗りの強さは、ライトテーマでは濃く、ダークテーマでは明るく表示される。上段は患者数、下段は人口10万対の率で塗り分けている。A市は患者数の地図では最も強い(1位)が、率の地図では最も弱い(5位)。逆にB町はその反対になる。</figcaption>
 </figure>
 
-A市は患者数の地図では最も色が濃いのに、率の地図ではほとんど色がつきません。逆にB町は患者数の地図では目立たないのに、率の地図では最も濃くなります。感染症専門医の地域偏在を扱うこの教材でも同じ注意が必要です。専門医「数」だけを地図にすると、単に人口が多い都市部が濃く塗られるだけになり、人口あたりで見たときの偏在(人口10万対専門医数)が隠れてしまいます。
+A市は患者数の地図では塗りが最も強いのに、率の地図では塗りが最も弱くなります。逆にB町は患者数の地図では目立たないのに、率の地図では塗りが最も強くなります。感染症専門医の地域偏在を扱うこの教材でも同じ注意が必要です。専門医「数」だけを地図にすると、単に人口が多い都市部が濃く塗られるだけになり、人口あたりで見たときの偏在(人口10万対専門医数)が隠れてしまいます。
 
 ## 年齢構成の違いと標準化率
 
@@ -142,7 +142,7 @@ SIR (または SMR) = 観察数 O ÷ 期待数 E
 <figure>
 <svg viewBox="0 0 640 150" role="img" style="max-width:100%;height:auto" aria-labelledby="fig2-title fig2-desc">
 <title id="fig2-title">同じ率データを等間隔と分位で階級区分した場合の塗り分けの違い</title>
-<desc id="fig2-desc">表2の5市町村を、等間隔での3階級と分位での3階級でそれぞれ塗り分けた図。D市とE町の階級(色の濃さ)が、区切り方によって変わることを示す。</desc>
+<desc id="fig2-desc">表2の5市町村を、等間隔での3階級と分位での3階級でそれぞれ塗り分けた図。D市とE町の階級(塗りの強さ)が、区切り方によって変わることを示す。</desc>
 <text x="10" y="20" fill="currentColor" font-size="14">等間隔(A,C,D,Eが同じ「低」、Bだけ「高」)</text>
 <g font-size="12">
 <rect x="10" y="30" width="90" height="40" fill="currentColor" fill-opacity="0.05" stroke="currentColor"/>
@@ -170,7 +170,7 @@ SIR (または SMR) = 観察数 O ÷ 期待数 E
 <text x="455" y="130" text-anchor="middle" fill="currentColor">B 高</text>
 </g>
 </svg>
-<figcaption>表2の架空データ。色の濃淡は割り当てられた階級(低・中・高)を表す(低0.05・中0.25・高0.45)。区切り方(等間隔/分位)だけを変え、元の率の値は変えていない。それでもD市・E町の色が変わる。</figcaption>
+<figcaption>表2の架空データ。塗りの強さは割り当てられた階級(低・中・高)を表す(低0.05・中0.25・高0.45)。区切り方(等間隔/分位)だけを変え、元の率の値は変えていない。それでもD市・E町の塗りの強さが変わる。</figcaption>
 </figure>
 
 したがって、他人が作ったchoropleth mapを見るときは、色の濃淡だけでなく**凡例に示された階級区分の方法と境目の数値**を必ず確認する必要があります。逆に自分で地図を作るときは、階級区分の選び方そのものが結論に影響しうることを踏まえ、複数の区切り方で見え方が大きく変わらないかを確認しておくと安全です。

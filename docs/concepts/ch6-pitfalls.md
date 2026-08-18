@@ -74,7 +74,7 @@
 
 次の図は zoning effect(境界の引き方の効果)を示すトイ例です。3行4列、12マスの架空の患者率データを、**同じ2区画という粗さのまま**、行で区切る場合と列で区切る場合で集約すると、見える結果が変わることを表しています(教材独自に作成した数値で、実データではありません)。
 
-<svg viewBox="0 0 620 300" role="img" style="max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 620 255" role="img" style="max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg">
   <title>MAUPのzoning effectを示すトイ例: 同じ3行4列の元データを、行で2区画に分けた場合と列で2区画に分けた場合とで、集計後の平均値と見え方が異なる</title>
   <text x="10" y="20" font-size="14" fill="currentColor">元データ(3行4列、値は架空の患者率)</text>
   <g font-size="13">
@@ -120,7 +120,6 @@
     <rect x="460" y="190" width="120" height="50" fill="currentColor" fill-opacity="0.23" stroke="currentColor"/>
     <text x="520" y="219" text-anchor="middle" fill="currentColor">右2列の平均 = 9.2</text>
   </g>
-  <text x="10" y="270" font-size="13" fill="currentColor">区画数(粗さ)はA・Bとも同じ2区画。区切り方(zoning)だけを変えると、Aでは高低差がはっきり出るのに対し、Bではほぼ差がなくなる。</text>
 </svg>
 
 区切り方Aでは上下で明確な高低差(15.0 対 7.25)が見えるのに対し、区切り方Bでは左右でほとんど差がありません(10.5 対 9.2)。**区画の数(粗さ)は2つとも同じで揃えている**ため、この違いは scale effect ではなく zoning effect(境界の引き方)によるものです。

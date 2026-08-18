@@ -28,7 +28,7 @@
 
 <svg viewBox="0 0 320 320" role="img" aria-labelledby="lisa-quad-title lisa-quad-desc" style="max-width:100%;height:auto">
   <title id="lisa-quad-title">LISAの4分類(自分の値×周囲の平均)</title>
-  <desc id="lisa-quad-desc">横軸は自分の値、縦軸は周囲の平均。右上がHigh-High、左上がLow-High、左下がLow-Low、右下がHigh-Low。High-HighとLow-Lowはクラスターの中心(塗りが濃い)、High-LowとLow-Highは空間的アウトライヤー(塗りが薄い)。</desc>
+  <desc id="lisa-quad-desc">横軸は自分の値、縦軸は周囲の平均。右上がHigh-High、左上がLow-High、左下がLow-Low、右下がHigh-Low。High-HighとLow-Lowはクラスターの中心(塗りが強い)、High-LowとLow-Highは空間的アウトライヤー(塗りが弱い)。</desc>
   <rect x="170" y="20" width="130" height="130" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-opacity="0.4"/>
   <rect x="40" y="20" width="130" height="130" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-opacity="0.4"/>
   <rect x="40" y="150" width="130" height="130" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-opacity="0.4"/>
@@ -81,11 +81,13 @@ Gi\*は、対象の地域と周囲を合わせた領域全体の値の合計(ま
 
 ## 核心: 「値が高い」ことと「hot spotである」ことは別
 
-以下の2つの3×3グリッドを比べます。どちらも中央のマスが目を引きますが、周囲の値が違います。
+以下の2つの3×3グリッドは、それ自体で完結した地図ではなく、全体としては値の低い広い地図から切り出した一部です。ここでは地図全体の平均をおよそ3とします。Gi\*もLISAのHigh/Low判定も、「高い/低い」を**地図全体の平均を基準に**判定するのであり、グリッド内の9マスだけで平均を取り直して判定するわけではありません。
+
+この前提のもとで、2つの3×3グリッドを比べます。どちらも中央のマスが目を引きますが、周囲の値が違います。
 
 <svg viewBox="0 0 360 210" role="img" aria-labelledby="grid-cmp-title grid-cmp-desc" style="max-width:100%;height:auto">
   <title id="grid-cmp-title">数値グリッドの対比: 空間的アウトライヤーとhot spot</title>
-  <desc id="grid-cmp-desc">左のグリッドは中央が20、周囲8マスがすべて2。中央だけが突出して高いが周囲は低い。右のグリッドは中央が12、周囲が10または11。突出した値はないが全体が高い水準でまとまっている。塗りの濃さは各グリッド内での値の相対的な高さを表す。</desc>
+  <desc id="grid-cmp-desc">左のグリッドは中央が20、周囲8マスがすべて2。中央だけが突出して高いが周囲は低い。右のグリッドは中央が12、周囲が10または11。突出した値はないが全体が高い水準でまとまっている。塗りの強さは各グリッド内での値の相対的な高さを表す。</desc>
   <text x="86" y="18" text-anchor="middle" fill="currentColor" font-size="13" font-weight="bold">空間的アウトライヤーの例</text>
   <text x="86" y="34" text-anchor="middle" fill="currentColor" font-size="11">中央だけ高く周囲は低い</text>
   <rect x="20" y="54" width="44" height="44" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.5"/>
@@ -128,6 +130,8 @@ Gi\*は、対象の地域と周囲を合わせた領域全体の値の合計(ま
   <text x="318" y="169" text-anchor="middle" fill="currentColor" font-size="15">10</text>
 </svg>
 
+上の2つのグリッドでは、塗りの強さはそれぞれのグリッドの中だけでの値の相対的な高さを表しており、左右のグリッドをまたいで塗りの強さを比較することはできません(値そのものは各マスに数値で書いてあるので、比較するときはその数値を見てください)。塗りの強さは、ライトテーマでは濃く、ダークテーマでは明るく表示されます。
+
 左のグリッドは、中央の20が周囲(すべて2)よりはるかに大きく、明らかに「値が高い」地域です。しかし周囲は低いままなので、Gi\*ではhot spotとして検出されにくくなります。Gi\*は自分と周囲をまとめて見るため、周囲が低いと中心の高さが押し下げられてしまうからです。LISAではこれを **High-Low(空間的アウトライヤー)** として明示的に検出できます。
 
 右のグリッドは、中央の12が周囲(10・11)より突出しているわけではなく、値の差はわずかです。しかし周囲を含めて全体が高い水準でまとまっているため、Gi\*では典型的な **hot spot** になり得ます。
@@ -137,7 +141,7 @@ Gi\*は、対象の地域と周囲を合わせた領域全体の値の合計(ま
 LISAの視点で同じ2つのグリッドを見直すと、対比がさらにはっきりします。LISAでいう「周囲の平均」は、自分自身を除いた隣接地域だけの平均です。
 
 - 空間的アウトライヤーの例: 中心の自分の値は20。隣接する8地域はすべて2なので、周囲の平均は2。「自分は高い・周囲は低い」の組み合わせなのでHigh-Lowに分類されます
-- hot spotの例: 中心の自分の値は12。隣接する8地域(10が4つ、11が4つ)の平均は (10×4+11×4) ÷ 8 = 10.5。「自分も高い・周囲も高い」の組み合わせなのでHigh-Highに分類されます
+- hot spotの例: 中心の自分の値は12。隣接する8地域(10が4つ、11が4つ)の平均は (10×4+11×4) ÷ 8 = 10.5。中心の12も隣接平均の10.5も、地図全体の平均(約3)と比べればどちらも高い値なので、「自分も高い・周囲も高い」の組み合わせでHigh-Highに分類されます
 
 同じ「中心が高い」という見た目でも、周囲の平均を計算するとLISAの分類はHigh-LowとHigh-Highで正反対になり、Gi\*の判定(hot spotになりにくい/なりやすい)とも対応しています。
 

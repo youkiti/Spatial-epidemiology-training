@@ -59,7 +59,7 @@ BYMのランダム効果 = 空間相関成分(CAR) + 非構造化誤差成分
 次の図は、通常の Poisson 回帰・CAR モデル・BYM モデルが、対数相対リスクの分解式のどの項を持つかを整理したものです。
 
 <figure role="img" aria-label="通常のPoisson回帰・CARモデル・BYMモデルが、対数相対リスクの分解式のどの項を持つかを示す模式図">
-<svg viewBox="0 0 720 230" style="max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 720 230" width="720" style="max-width:100%;height:auto" xmlns="http://www.w3.org/2000/svg">
 <title>モデルごとの項の有無</title>
 <desc>3つのモデル(通常のPoisson回帰、CARモデル、BYMモデル)を行に、切片・説明変数・空間相関成分(CAR)・非構造化誤差の4項を列にとった模式図。塗りつぶされた四角はその項を持つことを、破線の空の四角は持たないことを示す。</desc>
 <g font-size="15" fill="currentColor">
@@ -68,7 +68,7 @@ BYMのランダム効果 = 空間相関成分(CAR) + 非構造化誤差成分
 <text x="470" y="24" text-anchor="middle">空間相関(CAR)</text>
 <text x="620" y="24" text-anchor="middle">非構造化誤差</text>
 </g>
-<g font-size="15" fill="currentColor">
+<g font-size="13" fill="currentColor">
 <text x="10" y="70">通常のPoisson回帰</text>
 <text x="10" y="140">CARモデル</text>
 <text x="10" y="210">BYMモデル</text>

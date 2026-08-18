@@ -71,7 +71,7 @@
 <rect x="170" y="130" width="40" height="40" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-opacity="0.3"/>
 <text x="190" y="155" text-anchor="middle" font-size="14" fill="currentColor">7</text>
 </svg>
-<figcaption>正の空間自己相関の例(架空データ)。色が濃いセルほど値が高い。左上(12〜15)は高い値どうし、右上(2〜3)は低い値どうしが隣接しており、近くの値が似ている。</figcaption>
+<figcaption>正の空間自己相関の例(架空データ)。塗りが強いセルほど値が高いことを表す(ライトテーマでは濃く、ダークテーマでは明るく表示される)。左上(12〜15)は高い値どうし、右上(2〜3)は低い値どうしが隣接しており、近くの値が似ている。</figcaption>
 </figure>
 
 <figure>
@@ -151,9 +151,9 @@ Global Moran's I は、大まかに言えば
 <circle cx="170" cy="70" r="4" fill="currentColor"/>
 <circle cx="185" cy="55" r="4" fill="currentColor"/>
 <circle cx="200" cy="40" r="4" fill="currentColor"/>
-<circle cx="60" cy="130" r="4" fill="currentColor" fill-opacity="0.4"/>
+<circle cx="60" cy="105" r="4" fill="currentColor" fill-opacity="0.4"/>
 <circle cx="175" cy="165" r="4" fill="currentColor" fill-opacity="0.4"/>
-<text x="215" y="115" font-size="11" text-anchor="end" fill="currentColor">値(自分の地域)</text>
+<text x="215" y="134" font-size="11" text-anchor="end" fill="currentColor">値(自分の地域)</text>
 <text x="30" y="30" font-size="11" text-anchor="start" fill="currentColor">隣の平均</text>
 <text x="170" y="65" font-size="11" text-anchor="middle" fill="currentColor">High-High</text>
 <text x="70" y="65" font-size="11" text-anchor="middle" fill="currentColor">Low-High</text>
