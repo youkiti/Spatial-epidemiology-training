@@ -3,3 +3,9 @@
 # Ubuntu ランナーで動くため、改行コードが環境によって暗黙に変わるとビルド結果の差異や
 # 意図しない diff の原因になる。全テキストファイルの改行コードを LF に固定して揃える。
 * text=auto eol=lf
+
+# issue #17〜#20 のRハンズオンでは、レンダリングした図(PNG)を docs/handson/figures/ に
+# コミットする運用にしている。PNG は text=auto でも実際は正しくバイナリ判定されるが、
+# 図の点数が今後大きく増えるため保険として明示する。もし改行変換が走ると図が壊れるうえ、
+# scripts/check_handson_fresh.py のハッシュ照合が CI で落ちる。
+*.png binary

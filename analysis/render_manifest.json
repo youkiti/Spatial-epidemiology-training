@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "generated_at": "2026-08-19T08:55:37+0900",
+    "r_version": "4.5.2",
+    "pandoc_version": "3.8.3"
+  },
+  "handson": {
+    "00-setup": {
+      "source_rmd": {
+        "path": "analysis/handson/00-setup.Rmd",
+        "sha256": "7fdf913b433495fcb3b9130d6a5be0cfedf9099e6a6e5b1d3b1ca8417fd0eb7d"
+      },
+      "output_md": {
+        "path": "docs/handson/00-setup.md",
+        "sha256": "9583979a846f94b23013cbe2c227dc65011e400216c10ca881da2726f32bc06d"
+      },
+      "distributed_rmd": {
+        "path": "docs/handson/rmd/00-setup.Rmd",
+        "sha256": "e0d19131186f2ded63b2a5e63f08ea14d5c08f560c22a7e89bab67132f426207"
+      },
+      "figures": [
+        {
+          "path": "docs/handson/figures/00-setup-1.png",
+          "sha256": "cc9e2f30ab8ef240cafed8a33a61829d686cea5a9d23484f5b77edf5cb213911"
+        }
+      ]
+    }
+  }
+}

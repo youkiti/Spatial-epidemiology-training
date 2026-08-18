@@ -20,3 +20,7 @@ data/interim/
 .Rhistory
 .RData
 .Rproj.user/
+
+# analysis/ の renv プロジェクトライブラリ実体(issue #17)は analysis/renv/.gitignore
+# (renv::init() が自動生成する標準ファイル)側で無視している。analysis/renv.lock で
+# バージョンを固定し、renv::restore() で復元する前提なのでコミットしない。

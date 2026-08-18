@@ -1,0 +1,27 @@
+Package: spatialepihandson
+Type: Package
+Title: R Hands-on Analysis for Spatial Epidemiology Training
+Version: 0.0.1
+Authors@R: person("youkiti", email = "youkiti@gmail.com", role = c("aut", "cre"))
+Description:
+    Rハンズオン(docs/handson/ から生成される公開ページ)のソースを置くRプロジェクト。
+    renv (renv.lock) で依存パッケージのバージョンを固定する。issue #17 の時点では
+    analysis/handson/00-setup.Rmd(環境準備の説明と動作確認用の1枚の図)のみが
+    存在し、Imports はこの1本と scripts/render_handson.R が実際に使うパッケージだけに
+    絞ってある(digest と jsonlite は render_handson.R が render_manifest.json の
+    ハッシュ計算・書き出しに直接使う。どちらも rmarkdown 等の推移的依存として
+    既にライブラリにはあったが、直接呼ぶので明示した)。issue #18〜#20 で
+    ハンズオンの中身(地図・Moran's I・LISA・Gi*・CAR/BYM・MAUP・ケーススタディ)を
+    書く際に、sf・spdep・spatialreg 等を追加する想定。License フィールドは意図的に
+    省いてある。リポジトリのライセンスは未決定のため(CLAUDE.md
+    「未決定事項(実装前にユーザーに確認する)」の1番目。CC BY 4.0 が候補)、決まり
+    次第記入する。
+Encoding: UTF-8
+Imports:
+    rmarkdown,
+    knitr,
+    ggplot2,
+    dplyr,
+    ragg,
+    digest,
+    jsonlite

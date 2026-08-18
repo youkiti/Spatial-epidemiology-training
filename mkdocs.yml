@@ -89,6 +89,7 @@ nav:
       - concepts/ch5-explanatory.md
       - concepts/ch6-pitfalls.md
   - Rハンズオン:
+      - handson/00-setup.md
       - handson/01-map-moran-lisa-gi.md
       - handson/02-car-bym.md
       - handson/03-maup.md
