@@ -123,6 +123,9 @@ python scripts/build_population.py
 ### `population_iryoken2.csv`
 
 列: `area_code, area_name, pref_code, pref_name, population_2020, source, retrieved_on`
+に加え、issue #28(下記「年齢階級別人口」節)で年齢列
+(`pop_0_4`〜`pop_100plus`, `pop_65plus`, `pop_age_unknown`, `pop_total_census`)
+を追加している。
 
 - 339区域(`area_basic.csv` の `published_fy=="R7"` 行)の2020年国勢調査人口。
   `area_code` 昇順。
@@ -133,6 +136,8 @@ python scripts/build_population.py
 ### `population_prefecture.csv`
 
 列: `pref_code, pref_name, population_2020, source, retrieved_on`
+に加え、issue #28 で年齢列(`population_iryoken2.csv` と同じ列名)を
+追加している。
 
 - 47都道府県(`prefecture_basic.csv` の `published_fy=="R7"` 行、
   「全国」行(`pref_code="00"`)は除く)の2020年国勢調査人口。`pref_code` 昇順。
@@ -144,10 +149,92 @@ python scripts/build_population.py
 「全国」行(pref_code="00")の人口は、いずれも **126,146,099人で完全一致**
 (差0)。差があること自体は許容する設計だが、今回の実測では差は生じていない。
 
-### やっていないこと(推測で作らない)
+## 年齢階級別人口(issue #28)
 
-年齢階級別人口・65歳以上人口は `area_basic.csv` に無いため、今回は
-**総人口のみ**を出す。年齢階級別は e-Stat からの取得が別途必要で未着手。
+339構想区域・47都道府県の人口に、2020年国勢調査の年齢5歳階級・65歳以上
+人口を追加した。出典・取得日・SHA-256などの来歴は
+[documents/DATA_SOURCES.md](../../documents/DATA_SOURCES.md) の
+「年齢階級別人口(2020年国勢調査、issue #28)」節を参照。
+
+再生成するには:
+
+```bash
+python scripts/fetch_census_age.py
+python scripts/build_population_age.py
+```
+
+(`build_population_age.py` は隣リポジトリ visualize-regional-medical-care-for-2040
+の `data/processed/iryoken2_A38-20.geojson`・`area_geo_join.csv`・
+`data/reference/mie_area_municipalities.csv` を読む。パスは
+`--a38-geojson`・`--area-geo-join`・`--mie-csv` で変更できる。
+`python scripts/build_population.py` で `population_iryoken2.csv`・
+`population_prefecture.csv` の基礎列(総人口)が先に存在している必要がある。)
+
+### 列の共通の注意点(男女計 vs 性別内訳)
+
+- `population_iryoken2.csv`・`population_prefecture.csv` に追加した年齢列は
+  **男女計**(census の「0_総数」行)。
+- 性別内訳が要るときは `population_iryoken2_age_sex.csv`・
+  `population_prefecture_age_sex.csv`(下記)を使う。同じ列名だが
+  `sex` 列(`male`/`female`)で行が分かれている。
+- `pop_0_4`〜`pop_100plus` は5歳階級21区分(`pop_0_4, pop_5_9, …,
+  pop_95_99, pop_100plus`)。`pop_65plus` は census の「(再掲)65歳以上」列
+  (5歳階級の再集計ではなく census 自身の値をそのまま使っている)。この列が
+  `pop_65_69`〜`pop_100plus`(65-69〜100歳以上の5歳階級バンド)の合計と
+  完全一致することも `scripts/build_population_age.py` がハード検算している
+  (将来 e-Stat が「(再掲)」の定義を変えた場合に不整合を静かに出荷しない
+  ための検算)。`pop_age_unknown` は census の「年齢『不詳』」列
+  (`pop_total_census` から5歳階級の合計を引いた値と完全一致することを
+  同スクリプトがハード検算している)。`pop_total_census` は census の
+  「総数」列(年齢不詳を含む)で、既存の `population_2020` と比較するための列
+  (今回の実測では全339区域・47都道府県で完全一致、差0)。
+- コードは `muni_code`/`area_code`/`pref_code` いずれもゼロ埋め文字列
+  (`dtype=str` で読むこと。先頭ゼロが落ちる典型的な罠)。
+
+### `population_iryoken2_age_sex.csv` / `population_prefecture_age_sex.csv`
+
+列: `area_code, area_name, pref_code, pref_name, sex, pop_0_4, …, pop_100plus,
+pop_65plus, pop_age_unknown, pop_total_census`
+(都道府県版は `area_code`/`area_name` の代わりに `pref_code`/`pref_name` のみ)
+
+- 339区域×2性別=678行、47都道府県×2性別=94行。SMR算出などの分母として
+  性別ストラタが要る場面向け。`sex` は `male`/`female`(census の
+  「1_男」/「2_女」)のみで、`0_総数` 相当は男女計の主CSV側にある。
+
+### `municipality_to_iryoken2.csv`
+
+列: `muni_code, muni_name, area_code, area_name, pref_code, pref_name, mapping_source`
+
+- 全国1,896市区町村(政令指定都市の区を含む)→339構想区域の対応表。
+  `muni_code` 昇順。
+- `mapping_source` は `A38b_001`(隣リポジトリの `iryoken2_A38-20.geojson`
+  経由、1,867件)または `mie_area_municipalities`(三重県、
+  `data/reference/mie_area_municipalities.csv` 経由、29件)。三重県だけ
+  A38の335圏版とR7の339区域版で粒度が異なる(旧4圏域が8区域に細分化)ため、
+  隣リポジトリの `area_geo_join.csv` で unmatched になっている12区域全てを
+  この対応表で置き換えている(詳細は
+  [documents/DATA_SOURCES.md](../../documents/DATA_SOURCES.md) 参照)。
+- census(2020年国勢調査)の市区町村コード集合と、この対応表の `muni_code`
+  集合が完全一致することを `scripts/build_population_age.py` が
+  ハード検算している(片方にしか無いコードは握り潰さず
+  `population_age_audit.csv` に書き出す。issue #28 の要件)。
+
+### `population_age_audit.csv`
+
+列: `check, code, name, expected, actual, diff, note`
+
+- `scripts/build_population_age.py` が常に(異常が無くても)書き出す監査表。
+  ヘッダのみ(0行)なら異常なし。
+- 想定する `check` 値: `muni_only_in_census` / `muni_only_in_mapping`
+  (対応表の網羅性)、`national_reconciliation`(全国検算)、
+  `sex_consistency`(男+女≠総数)、`pop65plus_vs_band_sum`
+  (`pop_65plus` ≠ Σ65-69〜100歳以上バンド)、`pref_rollup`
+  (都道府県ロールアップ)、`area_total_vs_population_2020` /
+  `pref_total_vs_population_2020`(census総数と既存 `population_2020` の差)。
+- 2026-08-18実行時点では **0行**(異常なし。全339区域・47都道府県・
+  1,896市区町村ですべてのハード検算に合格)。
+
+### やっていないこと(推測で作らない)
 
 `iryoken2_A38-20.geojson`(335圏版、生のA38属性)には `A38b_007`〜`A38b_011`
 という人口らしき数値属性があるが、各属性が何を指すかを国土数値情報の
