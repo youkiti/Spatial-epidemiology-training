@@ -3,9 +3,17 @@
 #
 # verify_simulation.R — spdep を使った合成データの再確認スクリプト(R側)。
 #
-# 【重要】このスクリプトはこの実装環境に R が入っていないため、未実行(動作未確認)。
-# R 環境(CLAUDE.md記載: R 4.5.2 / spdep 1.4.1)で最初に走らせる際は、
-# 必ず一度動かして列名・パス・spdepの関数シグネチャに齟齬がないか確認すること。
+# R 4.5.2 / spdep 1.4.1 で実行して動作確認済み(2026-08-18)。
+# scripts/verify_simulation.py(Python版)と出力が一致することを確認した実測値:
+#   Global Moran's I = 0.3921418, ランダム化の期待値 = -0.0029325513,
+#   moran.mc 疑似p値 = 0.0010, LISA の HH 9/9・LL 9/9・HL 1/1,
+#   area_id=269 の Gi* z = 0.152。
+#
+# 【注意】spdep::mat2listw() は使わない。この環境では mat2listw() を呼ぶと、
+# 出力自体は最後まで正常に出るのにプロセス終了時にスタックオーバーフロー
+# (Windows 0xC00000FD、Git Bash では終了コード127)で異常終了する。行列サイズに
+# よらず再現し、rm()/gc()/明示的なquit()でも回避できない。隣接はもともとエッジ
+# 一覧のCSVで与えられているので、nb オブジェクトを直接組み立てて回避している。
 #
 # scripts/verify_simulation.py(標準ライブラリのみで自前実装したPython版)と
 # 同じ検証を、spdep::moran.test / spdep::localmoran / spdep::localG を使って
@@ -42,17 +50,23 @@ n <- nrow(areas)
 areas <- areas[order(areas$area_id), ]
 ids <- areas$area_id
 
-# area_id -> 1..n の連番位置に変換した隣接リストを作り、
-# spdep::mat2listw に渡せる 0/1 の隣接行列を組み立てる。
-id_to_index <- setNames(seq_len(n), ids)
-adj_mat <- matrix(0L, nrow = n, ncol = n)
-for (i in seq_len(nrow(nb_edges))) {
-  a <- id_to_index[[as.character(nb_edges$area_id[i])]]
-  b <- id_to_index[[as.character(nb_edges$neighbor_id[i])]]
-  adj_mat[a, b] <- 1L
-}
+# area_id -> 1..n の連番位置に変換した隣接リストを組み立てる。
+# spdep::mat2listw は使わない(この環境では呼ぶだけでプロセスがスタックオーバーフローで
+# 異常終了するため。詳細は上のコメント参照)。隣接はもともとエッジ一覧の CSV で
+# 与えられているので、nb オブジェクトを直接作るほうが素直でもある。
+pos <- setNames(seq_len(n), as.character(ids))
+nb <- split(
+  unname(pos[as.character(nb_edges$neighbor_id)]),
+  factor(unname(pos[as.character(nb_edges$area_id)]), levels = seq_len(n))
+)
+# 隣が0個の地域は spdep の約束どおり 0L で表す
+nb <- lapply(nb, function(v) if (!length(v)) 0L else as.integer(sort(v)))
+names(nb) <- NULL
+class(nb) <- "nb"
+attr(nb, "region.id") <- as.character(ids)
+attr(nb, "sym") <- TRUE
 
-listw <- mat2listw(adj_mat, style = "W")  # 行標準化(row-standardized)
+listw <- nb2listw(nb, style = "W")  # 行標準化(row-standardized)
 
 x <- areas$rate_per_100k
 
