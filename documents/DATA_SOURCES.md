@@ -205,3 +205,89 @@ issue #4/#5 で使った隣リポジトリの `iryoken2_A38-20.geojson`(335圏�
 |---|---|
 | `python scripts/fetch_census_age.py` | `data/raw/census_age_2020_table2-7.xlsx`(gitignore対象、上記SHA-256で取得を検証) |
 | `python scripts/build_population_age.py` | 上表「出力」を参照 |
+
+## 施設の座標データ(issue #9)
+
+専門医名簿の施設名に座標を与え、二次医療圏へ割り付けるための参照点テーブル
+(`data/interim/facility_reference.csv`)を作る2つのデータ源。
+
+### 出典・発行者
+
+| 項目 | 内容 |
+|---|---|
+| 医療情報ネットの出典 | 医療機能情報提供制度(医療情報ネット)。厚生労働省。<https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iryou/newpage_43373.html>。公表時点 2025-06-01 |
+| P04の出典 | 国土数値情報「医療機関データ」第3.0版(全国)、令和2年度。国土交通省。データページ: <https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P04-v3_0.html>。zip直URL: <https://nlftp.mlit.go.jp/ksj/gml/data/P04/P04-20/P04-20_GML.zip> |
+| 取得日(このリポジトリでの取得) | 2026-08-18 |
+
+**いずれも一次配布元に直接アクセスしていない。** 隣リポジトリ
+[visualize-regional-medical-care-for-2040](https://github.com/youkiti/visualize-regional-medical-care-for-2040)
+が既に取得・SHA-256記録済みのファイルをそのまま複製して使っている(上の
+「境界データ・人口データ」節と同じ扱い)。生データは `data/raw/`
+(`.gitignore` 済み)に置く。
+
+### 直接の入力ファイルとSHA-256
+
+| ファイル | 内容 | SHA-256 |
+|---|---|---|
+| `01-1_hospital_facility_info_20250601.zip` | 医療情報ネット 病院票 | `bc1ee5f4614a3cd0d66b0ce1d736b857426feb511ca3163925bd7285ba8bffd1` |
+| `02-1_clinic_facility_info_20250601.zip` | 医療情報ネット 診療所票 | `366679df93a61c6eded7bcf4ad680c805461a747242560ff38f535c237265575` |
+| `001306376.xlsx` | 医療情報ネットの列定義書 | `8715356b200196df9d9a226ad58a1290c667891bf9241af6f1c0ab2f14aefb8e` |
+| `P04-20_GML.zip` | 国土数値情報 医療機関データ(点データ) | `24d49390c0760416223784ab2dbb6ad852dbda9a07a5d3b769fba91be91c9732` |
+
+### ライセンス／利用条件
+
+医療情報ネットは公表制度に基づく行政公開情報、国土数値情報はダウンロード
+サービス利用規約(オープンデータ)に基づく。個人名を含まない施設情報のみで、
+このリポジトリでの取り扱い方針(要件定義書 §4.2)に抵触しない。
+
+### 生成コマンド
+
+```bash
+python scripts/build_facility_reference.py
+python scripts/link_facilities.py
+python scripts/verify_facility_linkage.py
+```
+
+出力は `data/interim/facility_reference.csv`(`.gitignore` 済み)、
+`data/processed/facility_geo_audit.csv`、`data/processed/specialists_iryoken2.csv`。
+詳細は [data/processed/README.md](../data/processed/README.md)。
+`data/curated/facility_crosswalk.csv` の位置づけは
+[data/curated/README.md](../data/curated/README.md) を参照。
+
+### 既知の注意点
+
+- **医療情報ネットの一括公開ファイルは都道府県ごとに網羅性が大きく違う。**
+  実測で沖縄県は病院30件・診療所91件、鳥取県は病院31件・診療所134件、
+  京都府は診療所626件しか収録されていない。`島根県立中央病院`・
+  `京都市立病院`・`自治医科大学附属病院`・`国立病院機構東京医療センター`
+  はいずれも収録されておらず、P04 にのみ存在する。**だから P04 を併用する
+  ことが必須**で、`build_facility_reference.py` は P04 を既定で読む。
+- **医療情報ネットの一括公開ファイルには公表時点が複数ある**
+  (2024-08-01 / 2024-12-01 / 2025-06-01 / 2025-12-01 / 2026-06-01)。
+  このリポジトリが 2025-06-01 版を使っているのは、隣リポジトリの選択を
+  そのまま引き継いでいるため(隣リポジトリは「原典の報告時点より後の移転を
+  拾うと、原典が誤っているのか原典の後に施設が動いたのかを分離できない」
+  という理由で 2025-06-01 を採用している)。名簿(2026-07-01)との間には
+  **13か月の開差**があり、この間の改称・移転・閉院は名簿側と一致しなくなる。
+- P04 は令和2年度で名簿(2026-07-01)と6年の開差がある。改称・移転・閉院は
+  一致しなくなる。
+- 医療情報ネットの座標欠測センチネルは空欄ではなく `0.0`/`0.0`(実測4,456件・
+  5.4%)。空欄判定では検出できず、範囲判定が要る。
+- **原典の座標そのものが壊れている行がある。** 実測例: 山形県鶴岡市の
+  診療所の経度が `139.0`(丸められている)、鹿児島県瀬戸内町の施設が
+  `129.2/28.1`、熊本県上益城郡の施設が `123.393744/41.769863`
+  (中国遼寧省付近)。
+- **同一施設が医療情報ネットとP04の両方に載っていて、二次医療圏が
+  食い違うことがある。** 実測: `厚生労働省霞が関診療所` は両者とも住所が
+  「千代田区霞が関1-2-2 中央合同庁舎第5号館3階」で同一なのに、座標は
+  P04 が実際の霞が関から約0.2km、医療情報ネットが約12.4km離れており、
+  二次医療圏が 1301(区中央部)と 1304(区西部)に分かれる
+  (`data/curated/facility_crosswalk.csv` の当該行のnote参照。医療情報ネット
+  側のジオコーディング誤りと判断した)。`link_facilities.py` は、この
+  食い違いを**黙って片方に寄せず、エラーで落とす**(`resolved_facility_name`
+  から医療圏コードを導出するとき、県内に複数の医療圏コードが候補として
+  出たら一意に決まらないとして落とす設計。`_resolve_iryoken2_code_from_name`
+  参照)。決着は人が `data/curated/facility_crosswalk.csv` に
+  `iryoken2_code` を直接書いて行う。**これは「2つの公表物が食い違ったときは
+  推測しない」という原則の実装であり**、隣リポジトリ
+  `doc/DECISION_FACILITY_COORDINATES.md` の決定3と同じ考え方。

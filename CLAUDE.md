@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 系統 | issue | この環境で動かせるか |
 |---|---|---|
-| Phase1 データ整備 | #4 境界データ → #5 人口（分母）、#7〜#9 専門医名簿PDF | **不可**。名簿PDF・国土数値情報・e-Stat の取得が要る。#4 が全ての起点 |
+| Phase1 データ整備 | **完了。** #4・#5・#7・#8 に加え、#9（施設の二次医療圏割付、主系列の割付率85.9%）と #28（年齢階級別人口）も入った。詳細は下記「Phase1のデータ整備状況」 | 残作業なし |
 | Phase2 引用の裏取り | #16 実例論文2本の一次資料での確認 | 論文全文にアクセスできれば可 |
 | Phase3 ハンズオン | #17 Rmd 配管 → #18〜#20 | **不可**。R が要る。#17 が #18〜#20 の前提 |
 
@@ -30,10 +30,15 @@ scripts/         quiz_lint.py（作問の機械チェック）、simulate_spatia
                  verify_simulation.py（合成データの生成と検証。issue #6）、
                  fetch_meibo.py / parse_meibo.py（専門医名簿PDFの取得と抽出。issue #7・#8）、
                  build_geo.R（境界データと隣接関係の生成。issue #4）、
-                 build_population.py（人口データの取得。issue #5）
+                 build_population.py（人口データの取得。issue #5）、
+                 build_facility_reference.py / link_facilities.py /
+                 verify_facility_linkage.py / lib_facility_name.py /
+                 propose_crosswalk.py（施設の名寄せと二次医療圏割付。issue #9）
 data/simulated/  上記生成器の出力CSV（合成データなのでコミットしている）
 data/geo/        二次医療圏・都道府県の境界データと queen contiguity。詳細は data/geo/README.md
-data/processed/  専門医数CSV（都道府県別・施設別）と人口CSV（詳細は「Phase1のデータ整備状況」）
+data/processed/  専門医数CSV（都道府県別・施設別・二次医療圏別）と人口CSV
+                 （詳細は「Phase1のデータ整備状況」と data/processed/README.md）
+data/curated/    施設名寄せの人手判断（facility_crosswalk.csv）。詳細は data/curated/README.md
 overrides/       404.html のテーマオーバーライド
 ```
 
@@ -41,18 +46,36 @@ overrides/       404.html のテーマオーバーライド
 
 - **都道府県別の専門医数**（`data/processed/specialists_prefecture.csv`）は名簿PDFの
   公式集計（1ページ目）由来で完全
-- **二次医療圏レベルの分子**（`data/processed/specialists_facility.csv`）は名簿本体
-  （施設ベース）由来で、施設の座標割付が未了（issue #9）のため二次医療圏には未集計
+- **二次医療圏レベルの分子**（`data/processed/specialists_iryoken2.csv`）は名簿本体
+  （施設ベース、`specialists_facility.csv`）の施設名を医療情報ネット・国土数値情報P04の
+  参照点テーブルに突合し、座標割付済み（issue #9）。**「診療の場かどうか」（`care_setting`
+  列）に応じて2系列を出す**（ユーザー指摘: 国立感染症研究所は診療機関ではない、を受けた
+  設計変更）。主系列 `n_specialists_care`（診療の場のみ）の全国合計は1,626名（割付率
+  85.9%）、`n_specialists_all`（勤務地ベース。care+non_care）は1,654名（割付率87.3%）。
+  施設名自体を特定できたのは1,656名（87.4%）だが、うち2名（長崎県の施設）は参照点の座標が
+  どの二次医療圏ポリゴンにも入らないため地図には反映されない（この差はcare/all両系列に
+  共通）。残り163名は施設名が公表データに見つからず未割付、59名は名簿に施設の記載が無い・
+  国外で割付不可、16名は診療を行わない勤務先（`non_care_workplace`）で所在の参照点も
+  特定できず割付不可、28名は所在は判明したが診療を行わない勤務先（研究機関・保健所・
+  製薬企業等）なので主系列には含まれない。欠測が地図の模様を作っていないこと（県別の
+  割付率(care基準)と専門医密度の相関が弱いこと）を `scripts/verify_facility_linkage.py`
+  が検算している。詳細は `data/processed/README.md` と
+  [docs/handson/04-case-study.md](docs/handson/04-case-study.md) 「データの制約」節
 - **人口**（`data/processed/population_iryoken2.csv` / `population_prefecture.csv`）は
-  総人口のみ。年齢階級別は未取得（issue #5 の残り）
+  総人口（`population_2020`）に加え、**5歳階級・65歳以上の列を持つ**（`pop_0_4` 〜
+  `pop_85plus` / `pop_65plus` ほか24列。issue #28 で e-Stat から直接取得。男女別は
+  `population_*_age_sex.csv` が別に持つ）。医師偏在の文脈で需要指標による標準化を
+  するときはこれを使う。出典と取得経路は
+  [documents/DATA_SOURCES.md](documents/DATA_SOURCES.md) の「年齢階級別人口」節
 
 ### コマンド
 
 ```bash
 pip install -r requirements.txt
-mkdocs build --strict          # CI と同じ検査。警告ゼロ・exit 0 で通ること
-mkdocs serve                   # クイズは fetch を使うので file:// 直開きでは動かない
-python scripts/quiz_lint.py    # クイズJSONの testwiseness cue 検査
+mkdocs build --strict                      # CI と同じ検査。警告ゼロ・exit 0 で通ること
+mkdocs serve                               # クイズは fetch を使うので file:// 直開きでは動かない
+python scripts/quiz_lint.py                # クイズJSONの testwiseness cue 検査
+python scripts/verify_facility_linkage.py  # 施設の名寄せ・二次医療圏割付（issue #9）の受け入れ条件検査
 ```
 
 ビルド出力の読み方に罠がある:
@@ -60,6 +83,10 @@ python scripts/quiz_lint.py    # クイズJSONの testwiseness cue 検査
 - 出力に出る "Warning from the Material for MkDocs team"（MkDocs 2.0 の告知）は**ビルド警告ではない**。警告ゼロの判定に数えない
 - `git-revision-date-localized` の `has no git logs` も同様で、プラグインが直接 print しており `--strict` を落とさない。つまり **CI から `fetch-depth: 0` を外してもビルドは緑のまま、各ページの更新日時だけが静かに壊れる**。外さないこと
 - Windows では出力をパイプに繋ぐと `$?` が `tail` 側の終了コードになる。ログにリダイレクトして終了コードを直接見ること
+
+### データ整備側の罠
+
+- **医療情報ネットの一括公開ファイルは都道府県ごとに網羅性が大きく違う**（実測で沖縄県は診療所91件、京都府は626件しか無い）。P04（国土数値情報）を併用しないと、医療情報ネットに載っていない大病院（`島根県立中央病院`など）が座標を持てず未割付になる。詳細は [documents/DATA_SOURCES.md](documents/DATA_SOURCES.md) の「施設の座標データ」節
 
 ### 設計の正本は documents/ にある
 
