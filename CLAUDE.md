@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 系統 | issue | この環境で動かせるか |
 |---|---|---|
-| Phase1 データ整備 | #4 境界データ → #5 人口（分母）、#7〜#9 専門医名簿PDF | **不可**。名簿PDF・国土数値情報・e-Stat の取得が要る。#4 が全ての起点 |
+| Phase1 データ整備 | #4・#7・#8 完了。#9（施設の二次医療圏割付）も完了（割付率87.1%、詳細は下記）。**#5（人口）は年齢階級別人口が未取得のため未完了**（総人口のみ取得済み。詳細は下記「Phase1のデータ整備状況」） | e-Stat からの年齢階級別人口取得が要る |
 | Phase2 引用の裏取り | #16 実例論文2本の一次資料での確認 | 論文全文にアクセスできれば可 |
 | Phase3 ハンズオン | #17 Rmd 配管 → #18〜#20 | **不可**。R が要る。#17 が #18〜#20 の前提 |
 
@@ -30,10 +30,15 @@ scripts/         quiz_lint.py（作問の機械チェック）、simulate_spatia
                  verify_simulation.py（合成データの生成と検証。issue #6）、
                  fetch_meibo.py / parse_meibo.py（専門医名簿PDFの取得と抽出。issue #7・#8）、
                  build_geo.R（境界データと隣接関係の生成。issue #4）、
-                 build_population.py（人口データの取得。issue #5）
+                 build_population.py（人口データの取得。issue #5）、
+                 build_facility_reference.py / link_facilities.py /
+                 verify_facility_linkage.py / lib_facility_name.py /
+                 propose_crosswalk.py（施設の名寄せと二次医療圏割付。issue #9）
 data/simulated/  上記生成器の出力CSV（合成データなのでコミットしている）
 data/geo/        二次医療圏・都道府県の境界データと queen contiguity。詳細は data/geo/README.md
-data/processed/  専門医数CSV（都道府県別・施設別）と人口CSV（詳細は「Phase1のデータ整備状況」）
+data/processed/  専門医数CSV（都道府県別・施設別・二次医療圏別）と人口CSV
+                 （詳細は「Phase1のデータ整備状況」と data/processed/README.md）
+data/curated/    施設名寄せの人手判断（facility_crosswalk.csv）。詳細は data/curated/README.md
 overrides/       404.html のテーマオーバーライド
 ```
 
@@ -41,8 +46,17 @@ overrides/       404.html のテーマオーバーライド
 
 - **都道府県別の専門医数**（`data/processed/specialists_prefecture.csv`）は名簿PDFの
   公式集計（1ページ目）由来で完全
-- **二次医療圏レベルの分子**（`data/processed/specialists_facility.csv`）は名簿本体
-  （施設ベース）由来で、施設の座標割付が未了（issue #9）のため二次医療圏には未集計
+- **二次医療圏レベルの分子**（`data/processed/specialists_iryoken2.csv`）は名簿本体
+  （施設ベース、`specialists_facility.csv`）の施設名を医療情報ネット・国土数値情報P04の
+  参照点テーブルに突合し、座標割付済み（issue #9）。地図に載る割付率は専門医数ベースで
+  **87.0%**（1,894名中1,647名）。施設名自体を特定できたのは1,649名（87.1%）だが、
+  うち2名（長崎県の施設）は参照点の座標がどの二次医療圏ポリゴンにも入らないため地図には
+  反映されない。残り163名は施設名が公表データに見つからず未割付、23名は
+  診療を行わない勤務先として除外、59名は名簿に施設の記載が無い・国外で割付不可。
+  欠測が地図の模様を作っていないこと（県別の割付率と専門医密度の相関が弱いこと）を
+  `scripts/verify_facility_linkage.py` が検算している。詳細は
+  `data/processed/README.md` と [docs/handson/04-case-study.md](docs/handson/04-case-study.md)
+  「データの制約」節
 - **人口**（`data/processed/population_iryoken2.csv` / `population_prefecture.csv`）は
   総人口のみ。年齢階級別は未取得（issue #5 の残り）
 
@@ -50,9 +64,10 @@ overrides/       404.html のテーマオーバーライド
 
 ```bash
 pip install -r requirements.txt
-mkdocs build --strict          # CI と同じ検査。警告ゼロ・exit 0 で通ること
-mkdocs serve                   # クイズは fetch を使うので file:// 直開きでは動かない
-python scripts/quiz_lint.py    # クイズJSONの testwiseness cue 検査
+mkdocs build --strict                      # CI と同じ検査。警告ゼロ・exit 0 で通ること
+mkdocs serve                               # クイズは fetch を使うので file:// 直開きでは動かない
+python scripts/quiz_lint.py                # クイズJSONの testwiseness cue 検査
+python scripts/verify_facility_linkage.py  # 施設の名寄せ・二次医療圏割付（issue #9）の受け入れ条件検査
 ```
 
 ビルド出力の読み方に罠がある:
@@ -60,6 +75,10 @@ python scripts/quiz_lint.py    # クイズJSONの testwiseness cue 検査
 - 出力に出る "Warning from the Material for MkDocs team"（MkDocs 2.0 の告知）は**ビルド警告ではない**。警告ゼロの判定に数えない
 - `git-revision-date-localized` の `has no git logs` も同様で、プラグインが直接 print しており `--strict` を落とさない。つまり **CI から `fetch-depth: 0` を外してもビルドは緑のまま、各ページの更新日時だけが静かに壊れる**。外さないこと
 - Windows では出力をパイプに繋ぐと `$?` が `tail` 側の終了コードになる。ログにリダイレクトして終了コードを直接見ること
+
+### データ整備側の罠
+
+- **医療情報ネットの一括公開ファイルは都道府県ごとに網羅性が大きく違う**（実測で沖縄県は診療所91件、京都府は626件しか無い）。P04（国土数値情報）を併用しないと、医療情報ネットに載っていない大病院（`島根県立中央病院`など）が座標を持てず未割付になる。詳細は [documents/DATA_SOURCES.md](documents/DATA_SOURCES.md) の「施設の座標データ」節
 
 ### 設計の正本は documents/ にある
 

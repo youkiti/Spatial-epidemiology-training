@@ -152,3 +152,97 @@ python scripts/build_population.py
 `iryoken2_A38-20.geojson`(335圏版、生のA38属性)には `A38b_007`〜`A38b_011`
 という人口らしき数値属性があるが、各属性が何を指すかを国土数値情報の
 仕様書で確認していないため使わない(今後の手がかりとしてのみ記録)。
+
+## 施設の二次医療圏割付(issue #9)
+
+`specialists_facility.csv`(名簿本体、施設ベース、1,059行)の各行を、
+医療情報ネット・国土数値情報P04の参照点テーブルに突合し、二次医療圏へ
+割り付けた結果。出典・生成コマンドは
+[documents/DATA_SOURCES.md](../../documents/DATA_SOURCES.md) の
+「施設の座標データ」節を参照。`data/curated/facility_crosswalk.csv`
+(人手の対応づけ)の位置づけは [data/curated/README.md](../curated/README.md)。
+
+再生成するには:
+
+```bash
+python scripts/build_facility_reference.py
+python scripts/link_facilities.py
+python scripts/verify_facility_linkage.py
+```
+
+### `facility_geo_audit.csv`
+
+列: `pref_name, facility_name, n_specialists, match_status, match_method,
+coordinate_source, assignment_basis, ref_facility_name, iryoken2_code,
+iryoken2_name, lon, lat, reason_code, contested`
+
+名簿本体の全1,059行(突合の成否を問わず)を1行も落とさず載せる監査表。
+
+- `match_status`: `matched`(割付できた)/ `unmatched`(施設名が参照点に
+  当たらなかった)/ `excluded`(診療を行わない勤務先として除外)/
+  `unassignable`(名簿に施設の記載が無い、または国外)
+- `match_method`: `normalized_exact`(正規化名の完全一致)/
+  `normalized_suffix`(接尾一致)/ `crosswalk`(人手の対応づけ)/ 空(未割付・除外)
+- `coordinate_source`: 座標の出所(`iryojoho_hospital` / `iryojoho_clinic` /
+  `ksj_p04` / `crosswalk`)
+- `assignment_basis`: 割付の根拠。`automatic`(名寄せの自動突合)/
+  `university_hospital` / `research_institute` / `renamed`(いずれも
+  crosswalk 経由の推論)/ `excluded_non_care` / `unassignable`
+- `contested`: 複数の名簿行が同じ参照点に当たった採用行に立つ補助フラグ
+  (採用/不採用の別である `match_status`/`reason_code` とは別列)
+
+2026-08-18時点の実測(`PYTHONUTF8=1 python scripts/link_facilities.py`):
+
+| 区分 | 行 | 専門医数 |
+|---|---:|---:|
+| crosswalk 経由の割付 | 94 | 529 |
+| tier1 医療情報ネット | 506 | 755 |
+| tier2 医療情報ネット | 178 | 246 |
+| tier1 P04 | 66 | 93 |
+| tier2 P04 | 24 | 26 |
+| **matched 計(施設を特定できた)** | **868** | **1,649(87.1%)** |
+| — うち二次医療圏に載る | 867 | 1,647(87.0%) |
+| — うち施設は特定できたが医療圏に載らない | 1 | 2 |
+| unmatched(未割付) | 147 | 163 |
+| excluded(診療を行わない勤務先) | 22 | 23 |
+| unassignable(施設掲載なし21行46名＋海外1行13名) | 22 | 59 |
+| 合計 | 1,059 | 1,894 |
+
+**「施設を特定できた」(matched)と「二次医療圏の地図に載る」(iryoken2_code
+が非空)は別の数である点に注意。** 地図に載る人数を主指標にする場合は
+1,647名(87.0%)、施設名を特定できた割合を指す場合は1,649名(87.1%)を使う。
+両方とも意味のある数であり、どちらか一方に丸めない
+(1,647 + 2 + 163 + 23 + 59 = 1,894 で全数を説明できる)。
+
+- **未割付(unmatched)**: 施設名が医療情報ネット・P04のどちらの参照点にも
+  正規化名で当たらなかった行。147行・163名。
+- **除外(excluded)**: `data/curated/facility_crosswalk.csv` で
+  `basis=excluded_non_care` と判断された行。製薬企業・銀行・官庁・医学部を
+  持たない大学など、診療を行わない勤務先。22行・23名。
+- **割付不可(unassignable)**: 名簿に施設の記載が無い(「施設掲載なし」、
+  21行・46名)、または勤務先が国外(「海外」、1行・13名)。合わせて22行・59名。
+- `assignment_basis` の分布: `automatic` 921 / `university_hospital` 82 /
+  `excluded_non_care` 22 / `unassignable` 22 / `renamed` 9 /
+  `research_institute` 3
+- 都道府県別の割付率(専門医数ベース)は富山県 64.3% が最低、島根県ほか
+  複数県で 100%(「海外」は 0/13 で対象外)
+- 欠測の偏り検査: 県別の割付率(matched かつ iryoken2_codeが非空、つまり
+  実際に地図に載る人数/名簿本体人数)と人口10万対専門医数(名簿本体ベース)の
+  Spearman順位相関は **ρ = −0.0719**。地図の模様が欠測パターンの反映に
+  なっていないことの確認で、`PYTHONUTF8=1 python scripts/verify_facility_linkage.py`
+  (条件7)を実行すれば再現できる
+- 参照点テーブル: 医療情報ネット 78,385件 + P04 112,452件 = 190,837件
+  (読み込み82,841件、うち座標センチネル等4,456件を除外)
+
+### `specialists_iryoken2.csv`
+
+列: `iryoken2_code, iryoken2_name, pref_name, n_specialists`
+
+- `facility_geo_audit.csv` の `match_status=matched` かつ `iryoken2_code` が
+  非空の行だけを二次医療圏で合計したもの。`iryoken2.geojson` の339区域を
+  過不足なく含む(0人の区域も行として存在する。0人と欠測を区別するため)。
+- 合計は **1,647名**。matched 合計 1,649名との差2名は
+  `長崎県 サン・レモ リハビリ病院`。参照点の座標がどの医療圏ポリゴンにも
+  入らないため(`iryoken2.geojson` は1km²未満の離島リングを除去済み)、
+  この施設は `matched` として専門医数に数えられているが、どの二次医療圏の
+  集計にも入らない。
