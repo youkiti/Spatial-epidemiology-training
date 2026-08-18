@@ -70,9 +70,13 @@ copyright: "空間疫学入門 — 本サイトはユーザーログを一切収
 extra_css:
   - assets/css/extra.css
 
-# extra_javascript はまだ書かない。issue #3 でクイズエンジンを載せる際に
-# storage.js → quiz.js → progress.js の依存順(先に読み込まれるものが後続の前提となる順)で
-# 追加する予定(ai-kotohajime の extra_javascript の並び順を踏襲)。
+# 読み込み順は依存順(storage.js → quiz.js → progress.js)で固定する。
+# quiz.js/progress.js は先に読み込まれた storage.js の window.SPEPI を前提とするため、
+# 順序を変えないこと(ai-kotohajime の extra_javascript の並び順を踏襲、issue #3)。
+extra_javascript:
+  - assets/js/storage.js
+  - assets/js/quiz.js
+  - assets/js/progress.js
 
 nav:
   - ホーム: index.md
