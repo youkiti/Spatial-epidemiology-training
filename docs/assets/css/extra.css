@@ -276,3 +276,75 @@
   border-color: #ffca28;
   background: rgba(255, 202, 40, 0.16);
 }
+
+/* ====================================================================
+   本文リンク(.md-typeset a)のコントラスト是正 (issue #33)
+   ----------------------------------------------------------------------
+   実測結果(2026-08-19、Playwrightで白背景/slate背景に対して算出):
+     - ライト base: Materialの既定 var(--md-primary-fg-color) = #009485
+       (primary: teal) は白背景で 3.77:1 しかなく WCAG AA (4.5:1) 未達。
+     - ライト hover/focus: Materialの既定 var(--md-accent-fg-color) = #ff6e42
+       (accent: deep orange) は白背景で 2.78:1 でさらに未達。
+     - ダーク(slate) base: #00ccb8 は slate既定背景(#1e2129)に対して 7.92:1、
+       ダーク hover/focus: #ff6e42 は同背景に対して 5.79:1 で、いずれも
+       既に AA を満たしている(悪化させない。値は変えず特異度だけ明示する)。
+
+   直し方は「値を下げた teal / deep orange をライトにだけ充てる」。
+   --md-accent-fg-color 自体はナビ・検索等でも使われる共有変数のため、
+   ここではグローバル上書きをせず、.md-typeset a の hover/focus にだけ
+   直接 color を指定してスコープを閉じる。
+
+   特異度の注意(issue #33 の調査でMaterialのCSSソースを読んで判明。
+   このファイル末尾側の既存slateセクション(既存ルールの書き換えを避け、
+   ライト向け色を足したらslate向けも併記するという別の規約)とは無関係):
+     - Materialのbaseリンク色は `:root,[data-md-color-scheme=default]` /
+       `[data-md-color-scheme=slate][data-md-color-primary=teal]` が
+       --md-typeset-a-color を定義している。前者は特異度(0,1,0)、
+       後者は(0,2,0)。ここを負けずに上書きするため、どちらも
+       `[data-md-color-scheme="..."][data-md-color-primary="teal"]`
+       まで書いて特異度を合わせるか上回らせる(読み込み順に頼らない)。
+     - Materialのhover/focus色は `.md-typeset a:focus,.md-typeset a:hover
+       {color:var(--md-accent-fg-color)}` で特異度(0,2,1)。
+       `[data-md-color-scheme="..."] .md-typeset a:hover` /
+       `:focus` は(0,3,1)になり上回るため、読み込み順によらず確実に勝つ。
+
+   primary=teal への結合に注意: 上のセレクタは `[data-md-color-primary="teal"]`
+   を含めて特異度を合わせている。mkdocs.yml の theme.palette.primary を
+   teal 以外に変えると、この上書きは(エラーも警告も出ないまま)無言で
+   効かなくなり、ライトのリンク色は teal 既定(#009485、白背景 3.77:1)に
+   戻って AA 未達が復活する。単に `[data-md-color-scheme="default"]` 単独に
+   弱めない理由: Materialはprimaryごとに `[data-md-color-primary=light-green]
+   :not([data-md-color-scheme=slate])` のような特異度(0,2,0)の個別定義を
+   持つものがあり、primaryによっては単独指定だとそちらに負けるため。
+   ==================================================================== */
+
+/* ライト: リンク色を teal 800 相当に下げる(#009485 → #00695c、白背景で
+   実測 6.61:1)。 */
+[data-md-color-scheme="default"][data-md-color-primary="teal"] {
+  --md-typeset-a-color: #00695c;
+}
+
+/* ライト: hover/focus を deep orange 900 相当に下げる(#ff6e42 → #bf360c、
+   白背景で実測 5.60:1)。--md-accent-fg-color 自体は書き換えず、
+   .md-typeset a の hover/focus にだけ直接 color を指定してスコープを閉じる。 */
+[data-md-color-scheme="default"] .md-typeset a:hover,
+[data-md-color-scheme="default"] .md-typeset a:focus {
+  color: #bf360c;
+}
+
+/* ダーク(slate): 上のライト向け上書きが波及しないことを明示するため、
+   Materialの既定値をそのまま特異度を合わせて再掲する(値は変えない、
+   実測 7.92:1 を維持)。 */
+[data-md-color-scheme="slate"][data-md-color-primary="teal"] {
+  --md-typeset-a-color: #00ccb8;
+}
+
+/* ダーク(slate): hover/focus は値を固定せず、Materialの既定の挙動
+   (var(--md-accent-fg-color)、実測 5.79:1)を変数のまま再掲する。
+   ライト向け上書きと対称な特異度で書くことで、mkdocs.yml の accent を
+   変更したときにダーク側だけリテラル値のまま取り残される事故を防ぎ、
+   accent の変更に自動追随させる(実効値は現状と変わらない)。 */
+[data-md-color-scheme="slate"] .md-typeset a:hover,
+[data-md-color-scheme="slate"] .md-typeset a:focus {
+  color: var(--md-accent-fg-color);
+}
