@@ -159,8 +159,12 @@ stdout と `data/geo/adjacency_diagnostics.md`(下記)の両方に出力する�
 隣リポジトリを持っていなくても再現できるようにするため)。再生成するには:
 
 ```bash
-"/c/Program Files (x86)/R/R-4.5.2/bin/Rscript.exe" scripts/build_adjacency_prefecture.R
+Rscript scripts/build_adjacency_prefecture.R
 ```
+
+(既定の Rscript 実行ファイルは `R.home("bin")` から自動的に見つける。PATH に
+`Rscript` が無い、または別バージョンのRを使いたい場合は
+`--rscript-bin <path>` でフルパスを指定できる。)
 
 `poly2nb()` の呼び出しは `build_geo.R` と同じ理由(この開発環境ではプロセス
 終了時に異常終了する)で子プロセスに切り出している。詳細は

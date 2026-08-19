@@ -10,7 +10,7 @@
 # data/geo/prefecture.geojson だけ**を入力にする(読者が別リポジトリを持って
 # いなくても再現できるようにするため)。二次医療圏の隣接
 # (data/geo/adjacency_iryoken2.csv)は既に build_geo.R が生成済みだが、都道府県の
-# 隣接ファイルは存在しないため、issue #20(ハンズオン④ MAUP)の Global Moran's I
+# 隣接ファイルは存在しないため、issue #20(ハンズオン③ MAUP)の Global Moran's I
 # を都道府県単位で計算するために本スクリプトで新規に作る。
 #
 # ## poly2nb() をサブプロセスで実行する理由(この環境固有の罠)
@@ -49,7 +49,10 @@ get_arg <- function(flag, default) {
 }
 
 default_pref_path <- "data/geo/prefecture.geojson"
-default_rscript_bin <- "C:/Program Files (x86)/R/R-4.5.2/bin/Rscript.exe"
+default_rscript_bin <- file.path(
+  R.home("bin"),
+  if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
+)
 
 pref_path <- get_arg("--prefecture-boundaries", default_pref_path)
 out_dir <- get_arg("--out-dir", "data/geo")
@@ -279,8 +282,8 @@ comp_order <- order(comp_sizes, decreasing = TRUE)
 components <- components[comp_order]
 comp_sizes <- comp_sizes[comp_order]
 
-singleton_codes <- sort(unlist(components[comp_sizes == 1]))
-components_match_isolated <- identical(singleton_codes, sort(isolated_codes))
+singleton_codes <- sort(as.character(unlist(components[comp_sizes == 1])))
+components_match_isolated <- identical(singleton_codes, sort(as.character(isolated_codes)))
 
 # --- 出力(1→2→3→4→5→6 の順に並べる。子プロセスのログは付録として最後に出す) --
 
@@ -343,7 +346,7 @@ emit("")
 emit("## 6. 連結成分")
 emit("")
 emit("- 都道府県単位の空間重み行列(隣接グラフ)が連結しているかどうかは、")
-emit("  ハンズオン④(MAUP)で都道府県単位のGlobal Moran's Iを計算する際に")
+emit("  ハンズオン③(MAUP)で都道府県単位のGlobal Moran's Iを計算する際に")
 emit("  直接効く論点のため、実測して記録する。")
 emit(sprintf("- 連結成分の個数: %d", length(components)))
 emit("- サイズ(降順)と代表都道府県:")
