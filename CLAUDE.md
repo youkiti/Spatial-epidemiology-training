@@ -118,6 +118,9 @@ python scripts/check_handson_fresh.py      # 生成物が最新か（R を実行
 - **クイズはページとJSをデータ属性で疎結合にする契約。** `data-quiz-gate` **無し**=自己チェック（合否は出すが保存しない）、**有り**=章末クイズ（合格を localStorage に保存）。`data-quiz-src` のパスは directory URL 基準の相対
 - **クイズJSONスキーマは ai-kotohajime と同一に保つ**: `{title, passRatio, questions:[{q, choices[4], answer, explanation}]}`。**`answer` は 0-origin**
 - **`extra.css` にハードコード色を足すときは、ダーク（slate）配色の上書きも必ず併せて書く。** 特に文字色は暗背景でコントラストが落ちる
+- **Material のスキーム別 CSS 変数を上書きするときは特異度を先に測る。** ライトの `--md-typeset-a-color` は `:root,[data-md-color-scheme=default]` が特異度 (0,1,0) で定義するが、**ダークは `[data-md-color-scheme=slate][data-md-color-primary=teal]` で (0,2,0)**。つまり上の「slate 側も併記する」に従って `[data-md-color-scheme="slate"] { ... }` とだけ書くと Material に負けて**無言で効かない**（ビルドも通るし警告も出ない）。primary 属性まで書いて特異度を合わせること。issue #33 で実測（`site/assets/stylesheets/palette.*.min.css` を grep すれば実際の定義が読める）
+- **`primary` / `accent` を変えると `extra.css` のリンク色上書きが静かに外れる。** issue #33 の上書きはセレクタに `[data-md-color-primary="teal"]` を含むため、`mkdocs.yml` の `theme.palette.primary` を teal 以外にすると発動しなくなり、ライトのリンクが WCAG AA 未達（3.77:1）に戻る。パレットを触るときは `extra.css` 末尾のリンク色セクションも必ず見直す
+- **コントラストの実測は「ページの先頭1リンク」で済ませない。** 白地でないところに乗ったリンク（クイズの採点結果ボックス内の `.spepi-quiz-incorrect-list a` など、`extra.css` が独自色を当てている経路）は `--md-typeset-a-color` の上書きが効かないため、地色ごと変わる。Playwright では `query_selector_all` で全リンクを走査し、**ページ×スキームごとの最小値**を見ること。クイズのボックスは解答→採点まで進めないと DOM に現れない。またホバー色は Material が約 0.25 秒かけて遷移するので、`hover()` 直後に読むと遷移途中の色を掴む（400ms 待つ）
 - 404 は `docs/404.md` では機能しない。テーマの静的テンプレート `404.html` が常に優先され、GitHub Pages はルートの `404.html` しか配信しない。`overrides/404.html` のリンクは**ルート相対**（`/Spatial-epidemiology-training/...`）で書く
 - 作問の lint 閾値を変えるときは、`documents/作問ガイドライン.md` §3 と `scripts/quiz_lint.py` を**同時に**改訂する
 - **ページ間リンクはソース相対の `.md` で書く**（`ch2-spatial-weights.md`、`../handson/03-maup.md`）。ディレクトリURL形式（`../ch2-spatial-weights/`）はブラウザ上は動くが MkDocs がリンクとして解決できず、`INFO ... unrecognized relative link` が出るだけで **`--strict` でも落ちない**。リンク切れを検出できない状態になる
