@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-19T15:21:30+0900",
+    "generated_at": "2026-08-19T21:19:43+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -90,6 +90,60 @@
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-toy10-1.png",
           "sha256": "02474c24daef5351ee922150a599d5cd5b09f5fc8e79978a8f5d632184f33e75"
+        }
+      ]
+    },
+    "02-car-bym": {
+      "source_rmd": {
+        "path": "analysis/handson/02-car-bym.Rmd",
+        "sha256": "d3379ce95d37e60f45935f064159b75b093d7704f6f447c113939e063a778b3a"
+      },
+      "output_md": {
+        "path": "docs/handson/02-car-bym.md",
+        "sha256": "e9449902ceac177400717d6a387476807e6b915dae530987cc278e17304f43ff"
+      },
+      "distributed_rmd": {
+        "path": "docs/handson/rmd/02-car-bym.Rmd",
+        "sha256": "d3379ce95d37e60f45935f064159b75b093d7704f6f447c113939e063a778b3a"
+      },
+      "data_inputs": [
+        {
+          "path": "data/simulated/lattice_areas.csv",
+          "sha256": "e1101fa6bbdda2fe53acc94b65086f68ec6d3a042d9071e7c9f3640939b6d265"
+        },
+        {
+          "path": "data/simulated/lattice_neighbors.csv",
+          "sha256": "781f86239919eb13f274fd4a476e91522910152015da0159b2b5bdf47fda3a97"
+        },
+        {
+          "path": "data/processed/specialists_iryoken2.csv",
+          "sha256": "794f304c39a744712b8a93baddce2a7e4b4ea50581322e4ba65d54f9282b6eb9"
+        },
+        {
+          "path": "data/processed/population_iryoken2.csv",
+          "sha256": "25cb5a4b39d29ae1de8029ce340abf47d7b9562f9035a5b822717f78a932fced"
+        },
+        {
+          "path": "data/geo/adjacency_iryoken2.csv",
+          "sha256": "0612c0527339b0c3d19c751b7b24d8b0df829e2e48a7dfd0e3f930e290c47618"
+        },
+        {
+          "path": "data/geo/iryoken2.geojson",
+          "sha256": "8f8b5184626c8ae73536e866e6207a4376f2846eba53effbfabbb43f5bf5f27e"
+        }
+      ],
+      "figures": [
+        {
+          "path": "docs/handson/figures/02-car-bym-map-real-1.png",
+          "sha256": "566a967ac62ee5a1f9b78827c6a3dc791e58b8660c01500c54754d57831826b9"
+        },
+        {
+          "path": "docs/handson/figures/02-car-bym-sir-instability-plot-1.png",
+          "sha256": "f4c2f09b1e2d3fd2432cf84e49b71c74a2de5c45549091e15e62cdff00d4383c"
+        },
+        {
+          "path": "docs/handson/figures/02-car-bym-smoothing-map-lattice-1.png",
+          "sha256": "b16a53f97ccfaae41a9274e75bb64a399d65cf938cd817b78512ac8d213083fb"
         }
       ]
     }
