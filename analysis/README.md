@@ -44,6 +44,15 @@ issue #18〜#20 でハンズオンの中身(地図・Moran's I・LISA・Gi\*・C
 再び1,950行前後まで膨れる(下記参照)。これは飾りの注意書きではなく、外すと
 静かに壊れる設定なので必ず守ってください。
 
+**上の `restore()` の節で勧めている `renv::load("analysis")` は、`snapshot()` の
+ためのセッション有効化としては不十分です。** `renv::load()` はライブラリパスを
+切り替えるだけで `analysis/.Rprofile` を source しないため、
+`options(renv.lockfile.version = 1)` が設定されません。`renv::load("analysis")` を
+呼んだだけのセッションで `renv::snapshot()` すると、作業ディレクトリを変えていなくても
+version 2 の lockfile に戻ります(2026-08-19、issue #18 で実際に踏みました)。
+`snapshot()` するときは `renv::load()` に頼らず、`analysis/` を作業ディレクトリにして
+R(`Rscript` 含む)そのものを起動してください。
+
 ### `renv::restore()` は Windows でソースビルドに落ちる(2026-08-19 時点で未解決)
 
 CRAN が Windows 向けのバイナリを配布しているのは、基本的に**各パッケージの最新版だけ**です。
