@@ -48,18 +48,31 @@ toy10
 # spdep::mat2listw() は使わない(この環境では呼ぶだけでプロセスが終了時に
 # 異常終了するため。CLAUDE.md「環境」節を参照)。隣接はもともとエッジ一覧の
 # CSVで与えられているので、nb オブジェクトを直接作るほうが素直でもある。
-build_nb <- function(ids, edges) {
+# 列名を引数にしてあるのは、実データの隣接ファイル
+# (data/geo/adjacency_iryoken2.csv)が area_code / neighbor_code という別の
+# 列名を使っているため。
+build_nb <- function(ids, edges, from = "area_id", to = "neighbor_id") {
+  key <- as.character(ids)
+  a <- as.character(edges[[from]])
+  b <- as.character(edges[[to]])
+
+  # ids に無いidを黙って捨てない。捨てると重み行列が警告なしに変わってしまい、
+  # しかも隣が全部 ids の外だった地域では、この下の 0L に落ちる前に長さ0の
+  # 要素ができて、あとで nb2listw() が「zero length neighbour vector」という
+  # 原因の分からないエラーで落ちる。
+  stopifnot(all(a %in% key), all(b %in% key))
+  # 下で sym = TRUE を宣言する以上、宣言する前に対称性を確かめておく。
+  stopifnot(setequal(paste(a, b), paste(b, a)))
+
   n <- length(ids)
-  pos <- setNames(seq_len(n), as.character(ids))
-  nb <- split(
-    unname(pos[as.character(edges$neighbor_id)]),
-    factor(unname(pos[as.character(edges$area_id)]), levels = seq_len(n))
-  )
-  # 隣が0個の地域は spdep の約束どおり 0L で表す
+  pos <- setNames(seq_len(n), key)
+  nb <- split(unname(pos[b]), factor(unname(pos[a]), levels = seq_len(n)))
+  # 隣が0個の地域は spdep の約束どおり 0L で表す(この場合 nb2listw() には
+  # zero.policy = TRUE を渡す必要がある)
   nb <- lapply(nb, function(v) if (!length(v)) 0L else as.integer(sort(v)))
   names(nb) <- NULL
   class(nb) <- "nb"
-  attr(nb, "region.id") <- as.character(ids)
+  attr(nb, "region.id") <- key
   attr(nb, "sym") <- TRUE
   nb
 }
@@ -90,38 +103,57 @@ summary(toy10_nb)
 まず患者数(`cases`)をそのまま地図にします。
 
 ``` r
-# 塗りが淡いタイルの上に白文字を置くと読めなくなるため、値が中央値以上なら白、
-# 未満なら濃いグレーの文字色を使う(fillとは別のcolorスケールなので競合しない)。
+# 淡い塗りの上に白文字を置くと読めなくなる。どちらの文字色にするかは「値が
+# 中央値以上か」では決められない — データが偏っていると中央値がまだ淡い側に
+# 来てしまい、そこに白文字が乗る(この10市町村では実測でコントラスト2.7:1まで
+# 落ちていた)。タイルの実際の塗り色に対するコントラスト比(WCAG)を計算して、
+# 黒と白の高いほうを選ぶ。scale_fill_gradient は Lab 空間で補間するので、
+# 塗り色の再現も colorRamp(space = "Lab") で揃える。
+fill_low <- "#a8c7e8"
+fill_high <- "#08306b"
+fill_ramp <- colorRamp(c(fill_low, fill_high), space = "Lab")
+
+label_color <- function(v, limits = range(v)) {
+  pos <- pmin(pmax((v - limits[1]) / diff(limits), 0), 1)
+  lum <- apply(fill_ramp(pos) / 255, 1, function(ch) {
+    lin <- ifelse(ch <= 0.03928, ch / 12.92, ((ch + 0.055) / 1.055)^2.4)
+    sum(lin * c(0.2126, 0.7152, 0.0722))
+  })
+  # 黒文字のコントラストは (lum+0.05)/0.05、白文字は 1.05/(lum+0.05)。
+  # 前者が勝つ条件を整理すると (lum+0.05)^2 >= 1.05*0.05。
+  ifelse((lum + 0.05)^2 >= 1.05 * 0.05, "black", "white")
+}
+
 ggplot(toy10, aes(x = x, y = y, fill = cases)) +
   geom_tile(color = "white", linewidth = 1) +
-  geom_text(aes(label = paste0(area_name, "\n", cases, "人"), color = cases >= median(cases)),
-            size = 4, show.legend = FALSE) +
-  scale_color_manual(values = c(`TRUE` = "white", `FALSE` = "#333333")) +
-  scale_fill_gradient(low = "#a8c7e8", high = "#08306b") +
+  geom_text(aes(label = paste0(area_name, "\n", cases, "人"), color = label_color(cases)),
+            size = 4) +
+  scale_color_identity() +
+  scale_fill_gradient(low = fill_low, high = fill_high) +
   scale_y_reverse() +
   coord_fixed() +
   theme_void() +
   labs(title = "架空10市町村の患者数", fill = "患者数")
 ```
 
-![架空10市町村の患者数を2行×5列の格子で塗った地図。A市が180人で最も多く、色も最も濃い。B市は75人、F市は15人で色が薄い。値が低いタイルの文字は濃いグレー、高いタイルの文字は白で表示している。](figures/01-map-moran-lisa-gi-map-count-toy10-1.png)
+![架空10市町村の患者数を2行×5列の格子で塗った地図。A市が180人で最も多く、色も最も濃い。F市は15人、D市は45人、J市は50人で色が薄い。各タイルの文字色は、そのタイルの塗り色に対してコントラストが高いほうを黒・白から選んでいる。](figures/01-map-moran-lisa-gi-map-count-toy10-1.png)
 
 次に人口10万対罹患率(`rate_per_100k`)を同じ格子で塗ります。
 
 ``` r
 ggplot(toy10, aes(x = x, y = y, fill = rate_per_100k)) +
   geom_tile(color = "white", linewidth = 1) +
-  geom_text(aes(label = paste0(area_name, "\n", rate_per_100k), color = rate_per_100k >= median(rate_per_100k)),
-            size = 4, show.legend = FALSE) +
-  scale_color_manual(values = c(`TRUE` = "white", `FALSE` = "#333333")) +
-  scale_fill_gradient(low = "#a8c7e8", high = "#08306b") +
+  geom_text(aes(label = paste0(area_name, "\n", rate_per_100k), color = label_color(rate_per_100k)),
+            size = 4) +
+  scale_color_identity() +
+  scale_fill_gradient(low = fill_low, high = fill_high) +
   scale_y_reverse() +
   coord_fixed() +
   theme_void() +
   labs(title = "架空10市町村の人口10万対罹患率", fill = "人口10万対\n罹患率")
 ```
 
-![架空10市町村の人口10万対罹患率を2行×5列の格子で塗った地図。B市が300で最も高く色が最も濃い。A市・D市・F市・G市・J市は100で色が最も薄い。値が低いタイルの文字は濃いグレー、高いタイルの文字は白で表示している。](figures/01-map-moran-lisa-gi-map-rate-toy10-1.png)
+![架空10市町村の人口10万対罹患率を2行×5列の格子で塗った地図。B市が300で最も高く色が最も濃い。A市・D市・F市・G市・J市は100で色が最も薄い。各タイルの文字色は、そのタイルの塗り色に対してコントラストが高いほうを黒・白から選んでいる。](figures/01-map-moran-lisa-gi-map-rate-toy10-1.png)
 
 2枚の地図を比べると、順位が入れ替わっていることが分かります。患者数がもっとも多いのはA市(180人)ですが、A市の人口も18万人と大きいため、人口10万対罹患率で見るとA市は100(最下位タイ)まで下がります。逆にB市は患者数こそ75人と中位ですが、人口が2.5万人と小さいため、人口10万対罹患率では300ともっとも高くなります。**患者数の地図だけを見ると、人口の少ない地域の高い率を見落とします**(教材が最重要視する落とし穴の1つ、人口の多さの無視に対応します)。
 
@@ -162,7 +194,7 @@ mc_toy10
     ## statistic = -0.22595, observed rank = 292, p-value = 0.708
     ## alternative hypothesis: greater
 
-Moran's I は -0.2259508、ランダム化のときの期待値は -0.1111111 で、`moran.test()` のp値は 0.7227、`moran.mc()`(permutation test、999回のシャッフル)のp値は 0.708 です。地域数が10しかないため、有意な結果にはなりません。
+Moran's I は -0.2259508、ランダム化のときの期待値は -0.1111111 で、`moran.test()` のp値は 0.7227、`moran.mc()`(permutation test、999回のシャッフル)のp値は 0.708 です。どちらも有意にはなりませんでした。
 
 [章3の「Global Moran's Iの符号の読み方」](../concepts/ch3-global-moran.md)で説明した通り、「無相関の基準」は0ではなく期待値 -1/(n-1)(n=10なので-0.1111)です。観測されたI(-0.226)はこの期待値を下回っており、向きとしては負の空間的自己相関(隣どうしが似ていない)側に振れています。**ただし、この程度のずれはp = 0.7227が示す通り偶然の範囲内であり、「負の空間的自己相関がある」と読んではいけません**——10地域という少ない標本では検出力そのものが乏しいためです。なお `moran.test()` の既定の対立仮説は正の空間的自己相関(`alternative = "greater"`、上の出力にも表示されています)であり、p = 0.7227はその片側検定の値です。観測値が期待値を下回っている以上、正の空間的自己相関を支持する検定結果にならないのは当然とも言えますが、負の空間的自己相関そのものを検定したい場合は `alternative = "less"` を指定する必要があります。
 
@@ -258,22 +290,25 @@ toy10_gi |>
 | E市    | 150 |   -0.912 |
 | F市    | 100 |   -1.448 |
 
-hot spotの目安としてよく使われる閾値z ≥ 1.96を超える市町村は1つもありません。**もっとも大きいのはC市(z = 1.706)**で、率がもっとも高いB市(z = 0.702)は上位にすら来ません。B市は自分の値こそ高いものの、周囲(A市・C市・G市)を合わせて見ると水準が押し下げられるため、Gi\*ではhot spotとして検出されません。
+hot spotの目安としてよく使われる閾値z ≥ 1.96を超える市町村は1つもありません。**もっとも大きいのはC市(z = 1.706)**で、率がもっとも高いB市(z = 0.702)は3番目です。率では10市町村中1位なのにGi\*では1位でなくなる、という順位の入れ替わりがここでの見どころです。B市は自分の値こそ高いものの、周囲(A市・C市・G市)がいずれも100と低いため、自分と周囲をまとめて見るGi\*では水準が押し下げられます。
 
 ``` r
 ggplot(toy10_gi, aes(x = x, y = y, fill = gi_z)) +
   geom_tile(color = "white", linewidth = 1) +
-  geom_text(aes(label = paste0(area_name, "\nz=", round(gi_z, 2)), color = gi_z >= median(gi_z)),
-            size = 3.4, show.legend = FALSE) +
-  scale_color_manual(values = c(`TRUE` = "white", `FALSE` = "#333333")) +
-  scale_fill_gradient(low = "#a8c7e8", high = "#08306b", limits = c(-2, 2)) +
+  # 塗りのスケールを limits = c(-2, 2) で固定しているので、文字色の判定にも
+  # 同じ範囲を渡す(データの範囲で測ると塗りと食い違う)。
+  geom_text(aes(label = paste0(area_name, "\nz=", round(gi_z, 2)),
+                color = label_color(gi_z, limits = c(-2, 2))),
+            size = 3.4) +
+  scale_color_identity() +
+  scale_fill_gradient(low = fill_low, high = fill_high, limits = c(-2, 2)) +
   scale_y_reverse() +
   coord_fixed() +
   theme_void() +
   labs(title = "架空10市町村のGi* z値(hot spot閾値1.96は未到達)", fill = "Gi* z値")
 ```
 
-![架空10市町村のGi* z値を塗った地図。全市町村ともz値は1.96未満で、hot spot閾値を超える地域は無い。B市は率が最も高いにもかかわらずz値は0.7程度にとどまる。z値が低いタイルの文字は濃いグレー、高いタイルの文字は白で表示している。](figures/01-map-moran-lisa-gi-gistar-map-toy10-1.png)
+![架空10市町村のGi* z値を塗った地図。全市町村ともz値は1.96未満で、hot spot閾値を超える地域は無い。B市は率が最も高いにもかかわらずz値は0.7程度にとどまる。各タイルの文字色は、そのタイルの塗り色に対してコントラストが高いほうを黒・白から選んでいる。](figures/01-map-moran-lisa-gi-gistar-map-toy10-1.png)
 
 ## 山場のまとめ: B市は「値は高いがhot spotではない」
 
@@ -323,6 +358,8 @@ hl_cell
 
     ##     row col
     ## 269  14   2
+
+`row`・`col` は**0起点**(row は 0〜17、col は 0〜18)です。上の `row = 14, col = 2` は上から15行目・左から3列目にあたります。この先の表に出てくる「行」「列」も同じ0起点の値です。
 
 ### Step 1(再掲): 空間重み行列を作る
 
@@ -500,7 +537,54 @@ lattice_gi |>
 |--------:|----:|----:|----:|---------:|
 |     269 |  14 |   2 | 765 |    0.152 |
 
-area_id = 269のGi\* z値は0.152で、hot spot閾値1.96を大きく下回ります。342地域まで規模が変わっても、toy10のB市と結論はまったく同じです。
+area_id = 269のGi\* z値は0.152で、hot spot閾値1.96を大きく下回ります。342地域まで規模が変わっても、toy10のB市と同じく「率は最高だがhot spotではない」という結果になりました。
+
+一方で、Gi\*が何も検出していないわけではありません。**埋め込んだHHクラスターのほうは、9マスすべてがhot spotとして検出されます。**
+
+``` r
+z <- lattice_gi$gi_z
+hh <- lattice_gi$truth_label == "HH"
+
+cat(sprintf(
+  paste0("z >  1.96 (hot spot) : %d 地域\n",
+         "z < -1.96 (cold spot): %d 地域\n",
+         "埋め込んだHHクラスターのうち hot spot: %d / %d\n",
+         "埋め込んだ単独高値(area_id = 269)の z: %.3f\n"),
+  sum(z > 1.96), sum(z < -1.96), sum(z[hh] > 1.96), sum(hh),
+  z[lattice_gi$area_id == 269]
+))
+```
+
+    ## z >  1.96 (hot spot) : 44 地域
+    ## z < -1.96 (cold spot): 40 地域
+    ## 埋め込んだHHクラスターのうち hot spot: 9 / 9
+    ## 埋め込んだ単独高値(area_id = 269)の z: 0.152
+
+これが章4の対比のもう半分です。Gi\*は**塊は拾い、単独の高値は拾わない**。「Gi\*が何も見つけなかった」のではなく、「率765という地図でいちばん高い1マスを外し、率がそこまで高くないHHクラスターのほうを拾った」ことが要点です。
+
+**ただし、これを「単独で高い値はGi\*では必ず閾値未満になる」という規則として覚えないでください。** z値が小さくなるのは「単独だから」ではなく、**周囲を含めた合計を、地図全体のばらつきと比べているから**です。分母に地図全体の標準偏差が入るので、背景がばらついているほど、同じ突出が小さなz値になります。
+
+同じ格子・同じ隣接・同じ765という値のまま、背景だけを平坦(全域100)にして計算し直すと、それが確かめられます。
+
+``` r
+# 背景を平坦にした反実仮想。隣接(lattice_listw_incl_self)も突出した値も
+# そのままで、変えたのは「背景がばらついているかどうか」だけ。
+x_flat <- rep(100, nrow(lattice))
+x_flat[lattice$area_id == 269] <- lattice$rate_per_100k[lattice$area_id == 269]
+gi_flat <- as.numeric(localG(x_flat, lattice_listw_incl_self))
+
+cat(sprintf(
+  paste0("背景がばらついている実データ: z = %.3f\n",
+         "背景が平坦なら同じ突出でも  : z = %.3f\n"),
+  lattice_gi$gi_z[lattice_gi$area_id == 269],
+  gi_flat[lattice$area_id == 269]
+))
+```
+
+    ## 背景がばらついている実データ: z = 0.152
+    ## 背景が平坦なら同じ突出でも  : z = 6.083
+
+平坦な背景なら、同じ1マスがはっきりhot spotとして検出されます。このデータでz = 0.152にとどまるのは、背景そのものが十分にばらついていて、1マスの突出がそのばらつきに埋もれるからです。[章4](../concepts/ch4-lisa-gi-satscan.md)が「hot spotとして検出され**にくく**なります」と書いているのは、この条件付きの話です。
 
 ``` r
 ggplot(lattice_gi, aes(x = col, y = row, fill = gi_z)) +
@@ -535,7 +619,8 @@ n_sig
 - 空間重み行列は分析の最初の一歩であり、地図を描く前に決める([章2](../concepts/ch2-spatial-weights.md))
 - 患者数の地図と人口10万対率の地図は順位が入れ替わりうる([章1](../concepts/ch1-descriptive.md))
 - Global Moran's Iは地図全体のまとまりを1つの数値に要約するが、少数の地域では有意にならないことがある([章3](../concepts/ch3-global-moran.md))
-- LISAは「自分と周囲の関係」を4分類し、Gi\*は「周囲を含めた塊」を検出する。**単独で値が高い地域は、LISAではHigh-Low、Gi\*ではhot spot閾値未満になる**([章4](../concepts/ch4-lisa-gi-satscan.md))
+- LISAは「自分と周囲の関係」を4分類し、Gi\*は「周囲を含めた塊」を検出する。**周囲が低ければ、単独で値が高い地域はLISAではHigh-Lowになり、Gi\*ではhot spotとして検出されにくくなる**([章4](../concepts/ch4-lisa-gi-satscan.md))
+- ただし「検出されにくい」は条件付きで、規則ではない。Gi\*のz値は周囲の合計を地図全体のばらつきと比べた量なので、背景が平坦なら同じ突出でもhot spotになる(Step 5の反実仮想)
 - LISA・Gi\*とも、分類そのものは有意性を含まない。局所p値を別に確認し、多重比較の問題も意識する
 
 次のハンズオンでは、通常のPoisson回帰から始めて空間相関を無視した場合の問題点を確認したうえで、CARモデル・BYMモデルを当てはめます([②CAR / BYM](02-car-bym.md))。

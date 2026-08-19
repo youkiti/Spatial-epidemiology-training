@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-19T12:57:32+0900",
+    "generated_at": "2026-08-19T15:21:30+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -34,15 +34,15 @@
     "01-map-moran-lisa-gi": {
       "source_rmd": {
         "path": "analysis/handson/01-map-moran-lisa-gi.Rmd",
-        "sha256": "e2db8dd5d0dec4ea243f870ed2e517095002f0a6d392738473c9596e24817fdf"
+        "sha256": "6f76d5c14d7689bc30fd878f66516ff5bdf11eac6025f00a22bf9fa47841e2f5"
       },
       "output_md": {
         "path": "docs/handson/01-map-moran-lisa-gi.md",
-        "sha256": "5e8e5dc728398c83757f293f202333fc4869e7393dd5e4ffe928bdd63a5258c9"
+        "sha256": "f0b05bab7e5e73ca371e19b7610cb7dd1ae5c42ff149009e9b1b4869361f9a17"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/01-map-moran-lisa-gi.Rmd",
-        "sha256": "e2db8dd5d0dec4ea243f870ed2e517095002f0a6d392738473c9596e24817fdf"
+        "sha256": "6f76d5c14d7689bc30fd878f66516ff5bdf11eac6025f00a22bf9fa47841e2f5"
       },
       "data_inputs": [
         {
@@ -69,7 +69,7 @@
         },
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-gistar-map-toy10-1.png",
-          "sha256": "d9004ac282c54a391707e1fc8fa7fe441e9206d28ee149492b776d773cd85054"
+          "sha256": "95defa65cd9f5a6b1f3a382c7ee03400bb4be9ef2c998ad55d76da4b5c0ac662"
         },
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-lisa-quadrant-map-lattice-1.png",
@@ -81,7 +81,7 @@
         },
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-map-count-toy10-1.png",
-          "sha256": "601259465f11d1dd9eae2fb2015590fb5fe586fec2522c55899ff0314b2af418"
+          "sha256": "b16ab2d467b4d48565653e609f0adbfed7d24c4a5a7855e3916a1f3260e39e7d"
         },
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-lattice-1.png",
@@ -89,7 +89,7 @@
         },
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-toy10-1.png",
-          "sha256": "3ed3d29517b3a1cb7da39a2c51e2af54c4ccdf0628771b8904b197465835f3b8"
+          "sha256": "02474c24daef5351ee922150a599d5cd5b09f5fc8e79978a8f5d632184f33e75"
         }
       ]
     }
