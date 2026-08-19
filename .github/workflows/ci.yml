@@ -41,3 +41,11 @@ jobs:
       - run: pip install -r requirements.txt
 
       - run: mkdocs build --strict
+
+      # Rハンズオン(docs/handson/)の生成物(md・図・配布用.Rmdコピー)の鮮度チェック
+      # (issue #17)。「CIにRを入れない」方針のため、Rmdのレンダリングは常にローカルで
+      # 行い生成物をコミットする運用にしている。このステップはRを一切実行せず、
+      # analysis/render_manifest.json に記録されたSHA-256とdocs/handson/以下の実ファイルの
+      # ハッシュを標準ライブラリのみで再計算・照合することで、「Rmdを変えたのにmdを
+      # 再生成していない」「生成物を手で書き換えた」を検出する。
+      - run: python scripts/check_handson_fresh.py

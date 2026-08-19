@@ -20,3 +20,14 @@ data/interim/
 .Rhistory
 .RData
 .Rproj.user/
+
+# analysis/ の renv プロジェクトライブラリ実体(issue #17)は analysis/renv/.gitignore
+# (renv::init() が自動生成する標準ファイル)側で無視している。analysis/renv.lock で
+# バージョンを固定し、renv::restore() で復元する前提なのでコミットしない。
+
+# knitr/rmarkdown の既定の fig.path が使われた場合に生成されうる補助ディレクトリ
+# (scripts/render_handson.R は fig.path を docs/handson/figures/ へ直接向けている
+# ため通常は作られないが、knitr/rmarkdown のバージョン差やレンダリング途中の
+# エラーで残ることがある。scripts/check_handson_fresh.py の対象外でもあるため、
+# git add -A で誤ってコミットされないようにここで無視する)。
+docs/handson/*_files/

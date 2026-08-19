@@ -32,6 +32,12 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+
+      # Rハンズオン(docs/handson/)の生成物(md・図・配布用.Rmdコピー)の鮮度チェック
+      # (issue #17)。ci.yml と同じ理由: 直push・管理者マージは pull_request 側の
+      # CI をすり抜けるため、実際に公開するこのワークフロー側にも同じゲートが要る。
+      - run: python scripts/check_handson_fresh.py
+
       - run: mkdocs build --strict
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
