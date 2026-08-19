@@ -206,7 +206,13 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 
 **`ragg` / `systemfonts` を読み込んだ R プロセスも終了時に落ちる**（Git Bash 経由で終了コード127。issue #17 で実測）。`mat2listw()` / `poly2nb()` と同種で、出力自体は最後まで正常に完了する。図の device に `ragg_png` を使うのは Windows で図中の日本語が豆腐にならないためで、避けられない。**`scripts/render_handson.R` の成否を終了コードで判定しないこと** — 正常終了時に stdout の最後へ `RENDER_HANDSON_OK` を出すので、その有無で判定する。
 
-**`renv::restore()` はこの環境で完走しない（2026-08-19 時点、原因未特定）。** CRAN が配布する Windows バイナリは各パッケージの最新版だけなので、`analysis/renv.lock` が固定する版（実測: `vctrs` 0.6.5。CRAN の R 4.5 向けバイナリは 0.7.3）はソースビルドになり、Rtools45 が入っているにもかかわらず失敗する。**ツールチェーンの問題ではない** — C のコンパイルは最後まで通り、`** byte-compile and prepare package for lazy loading` の段で `ERROR: lazy loading failed for package 'vctrs'` になる（独立に再現済み）。**レンダリングは renv に依存しない** — `scripts/render_handson.R` はリポジトリのルートから起動するため `analysis/.Rprofile`（renv の自動 activate）を読まず、システムライブラリで動く。`renv.lock` は当面「どのバージョンで生成したか」の記録として機能する。
+**`renv::restore()` はこの環境で完走しない（2026-08-19 時点。対応は issue #19 に持ち越し）。** CRAN が配布する Windows バイナリは各パッケージの**最新版だけ**なので、`analysis/renv.lock` が固定する版はソースビルドになる。実測: `vctrs` は lock が 0.6.5、CRAN の R 4.5 向けバイナリは 0.7.3。Rtools45 は入っているのでツールチェーンの問題ではなく、C のコンパイルは最後まで通ったうえで `** byte-compile and prepare package for lazy loading` の段で `ERROR: lazy loading failed for package 'vctrs'` になる（独立に再現済み）。
+
+**これは vctrs 固有ではない。** lock の51本中**30本**が CRAN 最新とズレており（`ggplot2` 4.0.1→4.0.3、`rlang` 1.1.7→1.3.0、`knitr` 1.50→1.51 ほか）、全部がソースビルド対象になる。**個別のパッケージを上げても直らない。**
+
+**`renv.lock` に `>=` は書けない**（lock は常に厳密固定。範囲を書けるのは `DESCRIPTION` の `Imports:` だが `restore()` はそこを見ない）。したがって直すべきはバージョン制約ではなく**リポジトリ**で、過去版のバイナリを配る Posit Public Package Manager の日付スナップショットに向ければ、厳密固定のままバイナリで引ける。実測: `https://packagemanager.posit.co/cran/2025-12-01/bin/windows/contrib/4.5/PACKAGES` には `vctrs` 0.6.5・`ggplot2` 4.0.1 があり、現 lock の51本中41本が一致する（残り10本は取得時期がバラけていて単一日付に揃わないため、揃える過程で動く）。
+
+**レンダリングは renv に依存しない** — `scripts/render_handson.R` はリポジトリのルートから起動するため `analysis/.Rprofile`（renv の自動 activate）を読まず、システムライブラリで動く。`renv.lock` は当面「どのバージョンで生成したか」の記録として機能する。
 
 **実ポリゴンを扱うときは `sf::sf_use_s2(FALSE)` が要る。** s2 有効のままだと `st_make_valid()` が一部ジオメトリを修復しきれず（実測: 新宮 3007）、`poly2nb()` がさらに強く落ちる。A38 由来の339区域では7件が `st_is_valid()` で不正、s2 を切れば `st_make_valid()` で全件修復できる。
 
@@ -225,6 +231,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 - **記述言語** = 日本語のみ（i18n は入れない）
 - **境界データの入手元** = 国土数値情報の医療圏データ（A38）。隣接リポジトリ <https://github.com/youkiti/visualize-regional-medical-care-for-2040> の `doc/DATA_SOURCES.md` に取得手順と罠が文書化されている
 - **架空データと実データの役割分担** = 架空の10市町村データは概念導入用、専門医名簿はケーススタディ専用
+- **`renv::restore()` を直すのは issue #19 の中で**（2026-08-19 決定）。今の lock は「どの版で生成したか」の記録として機能させ、#19 で `CARBayes` を入れて R 環境を触るときに、リポジトリを P3M の日付スナップショットへ切り替えてまとめて直す。**#18 は現行の検証済み環境のまま進めてよい** — 先に版を動かすと `sf` 1.0.21 / `spdep` 1.4.1 で確認した `poly2nb()` / `mat2listw()` の終了時クラッシュを再確認する手間が #18 の前に挟まるため。詳細は「環境」節
 - **CAR/BYM の実装** = `CARBayes`（issue #19 本文で確定）。`INLA` は CRAN ではなく専用リポジトリからの導入で読者に要求するハードルが高いため、コラムで触れるに留める
 - **簡略化済み（表示専用）GeoJSON を隣接判定に使ってよいか** = 使ってよい。`snap=0` と `snap=0.0001`（座標丸め幅と同程度）で queen contiguity の隣接ペアが完全一致した（1,558件、集合差0件）ため、0.0001度丸めは隣接判定に影響していない。本採用は `snap=0`。測定手順と全診断は `scripts/build_geo.R` と `data/geo/adjacency_diagnostics.md`
 

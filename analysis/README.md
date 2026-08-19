@@ -33,8 +33,21 @@ CRAN が Windows 向けのバイナリを配布しているのは、基本的に
 Windows バイナリは 0.7.3 で、0.6.5 はソースビルドの対象になる。
 
 この開発環境では **Rtools45 が導入済みであるにもかかわらず**、その `vctrs` 0.6.5 の
-ソースビルドが `lazy loading failed` で失敗した。**原因は未特定**であり、
-`renv::restore()` がこの環境で完走することは確認できていない。
+ソースビルドが失敗した。ツールチェーンの問題ではなく、C のコンパイルは最後まで通ったうえで
+`** byte-compile and prepare package for lazy loading` の段で
+`ERROR: lazy loading failed for package 'vctrs'` になる。
+
+**これは vctrs 固有の問題ではない。** `renv.lock` の51本中30本が CRAN 最新とズレており
+(`ggplot2` 4.0.1→4.0.3、`rlang` 1.1.7→1.3.0 ほか)、全部がソースビルド対象になる。
+個別のパッケージを上げても直らない。
+
+**直し方は分かっている（実施は issue #19、2026-08-19 決定）。** `renv.lock` に `>=` のような
+範囲指定は書けない(lock は常に厳密固定)ので、直すのはバージョン制約ではなく**リポジトリ**の方。
+過去版のバイナリを配る [Posit Public Package Manager](https://packagemanager.posit.co/) の
+日付スナップショット(例: `https://packagemanager.posit.co/cran/2025-12-01`)を
+`renv.lock` の `Repositories` に指定すれば、厳密固定のままバイナリで引ける。
+`CARBayes` を入れて R 環境を触る issue #19 の中でまとめて行う。それまでは
+`renv.lock` は「どの版で生成したか」の記録として機能させる。
 
 **レンダリング自体は renv に依存しません。** `scripts/render_handson.R` は
 リポジトリのルートから起動するため `analysis/.Rprofile`(renv の自動 activate)を読まず、
