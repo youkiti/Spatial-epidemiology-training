@@ -25,7 +25,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 documents/       設計の正本3文書。実装より先にここを読む
 docs/            MkDocs のサイトソース。ここに置いたものは公開される
   concepts/      概念パート6章（issue #10〜#15 で執筆済み。各章に自己チェック3問＋章末クイズ10問。章4のみ12問）
-  handson/       Rハンズオン4本（プレースホルダ）
+  handson/       Rハンズオン。00-setup.md は analysis/handson/00-setup.Rmd からの
+                 生成物（issue #17）。01〜04 はまだプレースホルダ（#18〜#20）
+    figures/     Rmd から生成した図。コミット対象
+    rmd/         配布用 .Rmd コピー。ページ末尾からダウンロードできる。生成物
   assets/js/     クイズエンジン（storage.js → quiz.js → progress.js）
   assets/data/   クイズJSON（全6章分。`quiz-chN-selfcheck.json` と `quiz-chN.json`）
   memo.md        ユーザーとの対話ログ。exclude_docs でサイトからは除外している
@@ -34,6 +37,8 @@ scripts/         quiz_lint.py（作問の機械チェック）、simulate_spatia
                  fetch_meibo.py / parse_meibo.py（専門医名簿PDFの取得と抽出。issue #7・#8）、
                  build_geo.R（境界データと隣接関係の生成。issue #4）、
                  build_population.py（人口データの取得。issue #5）、
+                 render_handson.R と check_handson_fresh.py（Rmd のレンダリングと
+                 生成物の鮮度チェック。issue #17）、
                  build_facility_reference.py / link_facilities.py /
                  verify_facility_linkage.py / lib_facility_name.py /
                  propose_crosswalk.py（施設の名寄せと二次医療圏割付。issue #9）
@@ -42,6 +47,7 @@ data/geo/        二次医療圏・都道府県の境界データと queen conti
 data/processed/  専門医数CSV（都道府県別・施設別・二次医療圏別）と人口CSV
                  （詳細は「Phase1のデータ整備状況」と data/processed/README.md）
 data/curated/    施設名寄せの人手判断（facility_crosswalk.csv）。詳細は data/curated/README.md
+analysis/        Rハンズオンの .Rmd ソースと renv.lock。詳細は analysis/README.md
 overrides/       404.html のテーマオーバーライド
 ```
 
@@ -79,6 +85,8 @@ mkdocs build --strict                      # CI と同じ検査。警告ゼロ�
 mkdocs serve                               # クイズは fetch を使うので file:// 直開きでは動かない
 python scripts/quiz_lint.py                # クイズJSONの testwiseness cue 検査
 python scripts/verify_facility_linkage.py  # 施設の名寄せ・二次医療圏割付（issue #9）の受け入れ条件検査
+Rscript scripts/render_handson.R           # Rmd → docs/handson/ の md + 図（ローカル専用。CI には R を入れない）
+python scripts/check_handson_fresh.py      # 生成物が最新か（R を実行せずハッシュ照合。CI が回す）
 ```
 
 ビルド出力の読み方に罠がある:
@@ -117,6 +125,7 @@ python scripts/verify_facility_linkage.py  # 施設の名寄せ・二次医療�
 - **inline SVG で `currentColor` の塗りの上に `currentColor` の文字を置くとき、`fill-opacity` は 0.45 まで**。それ以上だと地の色と文字色が同一になり、ライト/ダーク両方で**文字が消える**。濃淡は 0.05〜0.45 の範囲で付ける（`extra.css` を触らずにテーマ追従させるための制約とセット）
 - **クイズJSONの文字列に Markdown 記法を書かない。** `quiz.js` は JSON 由来の文字列を `textContent` で DOM に入れる（JSON由来の文字列をHTMLとして解釈させないための意図的な設計。`quiz.js` 冒頭の実装方針に明記されている）ため、`Gi\*` のエスケープやバックティックが**そのまま文字として表示される**。本文（Markdown）では `Gi\*` が正しく、クイズJSONでは `Gi*` が正しい
 - **`<figure>` 内の inline SVG には `width` 属性を必ず書く。** Material の `.md-typeset figure` は `width: fit-content` であり、SVG に `width` が無いと `width:auto` が「親幅の100%」に解決され、親が fit-content なので循環して 0×0 になり描画されない。figcaption があるとそのテキストが figure に幅を与えるため偶然描画できてしまい、気づきにくい。`mkdocs build --strict` でも `quiz_lint.py` でも検出できない
+- **生の HTML の `<img src>` / `<a href>` は MkDocs が相対パスを書き換えない。** ディレクトリURL形式（`docs/handson/00-setup.md` → `site/handson/00-setup/index.html`）のため、ページ内の相対パスはビルド時に1階層分ずらす必要があるが、この書き換えが効くのは **Markdown 記法（`![alt](path)` / `[text](path)`）だけ**。生の HTML はそのまま残り、実サイトで画像やリンクが壊れる。しかも `mkdocs build --strict` は警告を出さない（issue #17 で実測。`markdown` → `<img alt="alt" src="../figures/x.png">`、生HTML → `<img src="figures/x.png">` のまま）。**Rmd の図チャンクに `fig.cap` を付けないこと** — knitr が `<div class="figure">` ごと生 HTML で出す。`fig.alt` は付けてよい（`scripts/render_handson.R` が後処理で Markdown 記法に戻している）。詳細は `analysis/README.md`
 - **`fill="currentColor"` + `fill-opacity` の塗りは、ダークテーマで濃淡が反転する。** ライトテーマでは値が高いほど濃く見えるが、ダークでは値が高いほど明るく見える。図の凡例やキャプションに「濃い/薄い」と書くとダークで読む読者には逆の意味になるため、「塗りが強い/弱い」のような極性に依存しない語を使う。これも `mkdocs build --strict` や `quiz_lint.py` では検出できない
 
 ## プロジェクトの目的
@@ -194,6 +203,10 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 **`spdep::poly2nb()` も同じくプロセス終了時に落ちる**（Git Bash 経由で終了コード 255）。`mat2listw()` と同種だが、今回は `poly2nb()` 自体がトリガー。実ポリゴンから隣接を導くのに `poly2nb()` は避けられないため、**呼び出しだけを子プロセスの `Rscript` に切り出し、結果をCSVに書かせてから親が読み戻す**のが回避策（`scripts/build_geo.R` が実装例）。**終了コードで成否を判定しないこと** — 代わりに (a) 出力先が毎回新しい tempdir か、(b) 子が完了マーカーを stdout に出したか、で判定する。ファイルの存在チェックだけだと、書き込み途中で切れたCSVを黙って読んでしまう。
 
 この制約は Phase3（issue #17〜#20）の Rmd に直接効く。**ハンズオンの Rmd から `poly2nb()` / `mat2listw()` を直接呼ばない**。`data/geo/adjacency_iryoken2.csv`（issue #4 で生成済みの queen contiguity エッジ一覧）を読んで `nb` を組み立て、`nb2listw()` に渡す構成にする（`scripts/verify_simulation.R` が組み立ての実装例）。読者の環境では `poly2nb()` が通る可能性はあるが、その場合でも**隣接の定義を再現可能な成果物として固定しておく方が教材として正しい**（章2の「『隣』を先に決める」と対応する）。
+
+**`ragg` / `systemfonts` を読み込んだ R プロセスも終了時に落ちる**（Git Bash 経由で終了コード127。issue #17 で実測）。`mat2listw()` / `poly2nb()` と同種で、出力自体は最後まで正常に完了する。図の device に `ragg_png` を使うのは Windows で図中の日本語が豆腐にならないためで、避けられない。**`scripts/render_handson.R` の成否を終了コードで判定しないこと** — 正常終了時に stdout の最後へ `RENDER_HANDSON_OK` を出すので、その有無で判定する。
+
+**`renv::restore()` はこの環境で完走しない（2026-08-19 時点、原因未特定）。** CRAN が配布する Windows バイナリは各パッケージの最新版だけなので、`analysis/renv.lock` が固定する版（実測: `vctrs` 0.6.5。CRAN の R 4.5 向けバイナリは 0.7.3）はソースビルドになり、Rtools45 が入っているにもかかわらず失敗する。**ツールチェーンの問題ではない** — C のコンパイルは最後まで通り、`** byte-compile and prepare package for lazy loading` の段で `ERROR: lazy loading failed for package 'vctrs'` になる（独立に再現済み）。**レンダリングは renv に依存しない** — `scripts/render_handson.R` はリポジトリのルートから起動するため `analysis/.Rprofile`（renv の自動 activate）を読まず、システムライブラリで動く。`renv.lock` は当面「どのバージョンで生成したか」の記録として機能する。
 
 **実ポリゴンを扱うときは `sf::sf_use_s2(FALSE)` が要る。** s2 有効のままだと `st_make_valid()` が一部ジオメトリを修復しきれず（実測: 新宮 3007）、`poly2nb()` がさらに強く落ちる。A38 由来の339区域では7件が `st_is_valid()` で不正、s2 を切れば `st_make_valid()` で全件修復できる。
 
