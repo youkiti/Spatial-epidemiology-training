@@ -210,7 +210,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 
 **これは vctrs 固有ではない。** lock の51本中**30本**が CRAN 最新とズレており（`ggplot2` 4.0.1→4.0.3、`rlang` 1.1.7→1.3.0、`knitr` 1.50→1.51 ほか）、全部がソースビルド対象になる。**個別のパッケージを上げても直らない。**
 
-**`analysis/renv.lock` は `Hash`/`Requirements` 付きの正規の `renv::snapshot()` 産物（issue #17 レビューで再生成・確認済み。手順と詳細は `analysis/README.md` 参照）。** ただし `Hash` の有無はこの節で説明している restore 失敗の原因（CRAN が古い版のバイナリを配らないこと）とは無関係で、フォーマットを直しただけでは restore は直らない。直し方は下記の通り、issue #19 に持ち越し。
+**`analysis/renv.lock` は `Hash`/`Requirements` 付きの正規の `renv::snapshot()` 産物（issue #17 レビューで再生成・確認済み。手順と詳細は `analysis/README.md` 参照）。** ただし `Hash` の有無はこの節で説明している restore 失敗の原因（CRAN が古い版のバイナリを配らないこと）とは無関係で、フォーマットを直しただけでは restore は直らない。直し方は下記の通り、issue #19 に持ち越し。再 snapshot するときは `renv::load()` では不十分（`.Rprofile` が読まれず lockfile version が既定の2に戻る）なので、必ず `analysis/` を作業ディレクトリにして R を起動すること。詳細は `analysis/README.md` 参照。
 
 **`renv.lock` に `>=` は書けない**（lock は常に厳密固定。範囲を書けるのは `DESCRIPTION` の `Imports:` だが `restore()` はそこを見ない）。したがって直すべきはバージョン制約ではなく**リポジトリ**で、過去版のバイナリを配る Posit Public Package Manager の日付スナップショットに向ければ、厳密固定のままバイナリで引ける。実測: `https://packagemanager.posit.co/cran/2025-12-01/bin/windows/contrib/4.5/PACKAGES` には `vctrs` 0.6.5・`ggplot2` 4.0.1 があり、現 lock の51本中41本が一致する（残り10本は取得時期がバラけていて単一日付に揃わないため、揃える過程で動く）。
 
