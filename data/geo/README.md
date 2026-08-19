@@ -146,6 +146,48 @@ stdout と `data/geo/adjacency_diagnostics.md`(下記)の両方に出力する�
 無ければ子プロセスのログ全文を添えて exit 1 する(終了コードは上記のとおり
 信用しないが、完了マーカーの有無は信用する)。
 
+## `adjacency_prefecture.csv`(issue #20)
+
+列: `area_code, neighbor_code`(値は `pref_code`)。都道府県境界(`prefecture.geojson`、
+47都道府県)から `spdep::poly2nb(..., queen = TRUE)` で導いた queen contiguity。
+`adjacency_iryoken2.csv` と同じ流儀で両方向を書き出している。`area_code` 昇順・
+`neighbor_code` 昇順でソート済み(174行)。
+
+`scripts/build_geo.R` が外部リポジトリの生の境界データを入力にしているのに対し、
+本ファイルは `scripts/build_adjacency_prefecture.R` が**このリポジトリに既に
+コミットされている `prefecture.geojson` だけ**を入力に生成する(読者が
+隣リポジトリを持っていなくても再現できるようにするため)。再生成するには:
+
+```bash
+"/c/Program Files (x86)/R/R-4.5.2/bin/Rscript.exe" scripts/build_adjacency_prefecture.R
+```
+
+`poly2nb()` の呼び出しは `build_geo.R` と同じ理由(この開発環境ではプロセス
+終了時に異常終了する)で子プロセスに切り出している。詳細は
+`scripts/build_adjacency_prefecture.R` 冒頭のコメントを参照。
+
+### `adjacency_prefecture_diagnostics.md`
+
+`scripts/build_adjacency_prefecture.R` が実行した診断1〜6の全文。要約
+(2026-08-19実行):
+
+1. **フィーチャ数**: 47都道府県で期待どおり。
+2. **ジオメトリ妥当性**: 47都道府県すべて `st_is_valid()` で TRUE(修復不要)。
+3. **孤立都道府県**: 2件(北海道・沖縄県)。いずれも陸上で他都道府県と接して
+   いないため妥当。
+4. **snap 感度テスト**: `snap=0` と `snap=0.0001`(座標丸め幅と同程度)で
+   隣接ペアの集合は完全に一致した(174件、集合差0件)。`snap=0.001`(対照条件)
+   でも差は生じなかった。本採用は `snap=0`。
+5. **隣接数の要約**: 平均 3.702、最小 0(北海道・沖縄県)、最大 8。
+6. **連結成分**: 隣接グラフは**連結していない**(連結成分4個)。内訳は
+   本州(34都府県)と四国(4県)が併合した1つの成分(38都道府県。
+   `adjacency_iryoken2.csv` の連結成分診断〔上記〕で確認済みの本州・四国併合と
+   整合する)、九州7県の成分、北海道の孤立成分、沖縄県の孤立成分。サイズ1の
+   成分(孤立都道府県2件)は診断3の孤立都道府県と一致することを確認済み。
+   **この非連結性は、都道府県単位で Global Moran's I を計算するハンズオン③
+   (MAUP)で直接効く**(北海道・沖縄県は queen contiguity では隣接ゼロのため
+   `zero.policy` の扱いが必要になる)。
+
 ## 実ポリゴンとの関係(issue #4 完了後)
 
 `data/simulated/lattice_neighbors.csv` の隣接関係は規則格子(lattice)上で
