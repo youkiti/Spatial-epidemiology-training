@@ -186,4 +186,4 @@ queen contiguity・距離閾値など、複数の空間重み行列(「隣」の
 
 ## 次に読む章
 
-概念パートの6章はここまでです。次は[ハンズオン①(地図 → Global Moran's I → LISA → Gi\*)](../handson/01-map-moran-lisa-gi.md)で、ここまでの内容を実際に手を動かして再現してみましょう。
+概念パートの6章はここまでです。次は[ハンズオン⓪(環境準備と進め方)](../handson/00-setup.md)で環境を整えてから、[ハンズオン①(地図 → Global Moran's I → LISA → Gi\*)](../handson/01-map-moran-lisa-gi.md)でここまでの内容を実際に手を動かして再現してみましょう。

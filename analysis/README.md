@@ -11,10 +11,24 @@ Rハンズオン(`docs/handson/` に公開される各ページ)の **ソース*
 依存パッケージのバージョンは `analysis/renv.lock` に固定してあります。
 
 ```r
-# リポジトリのルートから
-setwd("analysis")
+# リポジトリのどこから呼んでもよい(setwd() は不要)
+renv::load("analysis")
 renv::restore()
 ```
+
+**`setwd("analysis")` してから `renv::restore()` を呼ぶだけでは不十分です。** `setwd()` は
+`analysis/.Rprofile`(renv の自動有効化スクリプト)を読み込まないため renv が有効化されず、
+`renv::restore()` は `.libPaths()` に残ったシステムのライブラリへ直接インストールしてしまいます
+(このプロジェクト専用のライブラリではなく、マシン上の他のRプロジェクトにも影響する版が
+書き換わります)。**`renv::restore(project = "analysis")` も同じ理由で不十分です**——
+`restore()` は `library` 引数が省略されたとき現在のセッションの `.libPaths()` をそのまま使う
+(`project` はロックファイルの場所を特定するためだけに使われ、ライブラリの決定には使われない)
+ため、有効化していないセッションから呼ぶとやはりシステムのライブラリにインストールされます
+(実測で確認済み: `renv:::renv_libpaths_resolve(NULL)[1]` は有効化前後で
+`C:/Users/.../win-library/4.5` → `.../renv/library/analysis-.../...` のように変わり、
+`renv::restore(project = "analysis")` を呼ぶ**前**の時点でこれが `restore()` の使う値になる)。
+上記のように先に `renv::load("analysis")` を呼んで有効化してから `renv::restore()` を
+実行すれば、作業ディレクトリを変えずに正しいプロジェクト専用ライブラリへインストールされます。
 
 `renv.lock` は `DESCRIPTION` の `Imports` に書かれたパッケージ(と、その再帰的な依存)
 だけを対象にした `explicit` スナップショットです。issue #17 の時点では
@@ -22,7 +36,13 @@ renv::restore()
 (`rmarkdown`, `knitr`, `ggplot2`, `dplyr`, `ragg`, `digest`, `jsonlite`)のみが対象です。
 issue #18〜#20 でハンズオンの中身(地図・Moran's I・LISA・Gi\*・CAR/BYM・MAUP・
 ケーススタディ)を書く際に、`sf`・`spdep`・`spatialreg` 等を `DESCRIPTION` に足して
-`renv::snapshot()` し直す想定です。
+`renv::snapshot()` し直す想定です。**このとき `analysis/.Rprofile` が有効化された
+セッション(= `analysis/` を作業ディレクトリにして起動した R)から実行してください。**
+`analysis/.Rprofile` は `options(renv.lockfile.version = 1)` を設定しており、これが
+無いセッションから `renv::snapshot()` すると既定の lockfile version 2 に戻り、
+`analysis/renv.lock` が(51本→変わらないが)`Hash`/`Requirements` を失って
+再び1,950行前後まで膨れる(下記参照)。これは飾りの注意書きではなく、外すと
+静かに壊れる設定なので必ず守ってください。
 
 ### `renv::restore()` は Windows でソースビルドに落ちる(2026-08-19 時点で未解決)
 
@@ -40,6 +60,24 @@ Windows バイナリは 0.7.3 で、0.6.5 はソースビルドの対象にな�
 **これは vctrs 固有の問題ではない。** `renv.lock` の51本中30本が CRAN 最新とズレており
 (`ggplot2` 4.0.1→4.0.3、`rlang` 1.1.7→1.3.0 ほか)、全部がソースビルド対象になる。
 個別のパッケージを上げても直らない。
+
+**`renv.lock` は `Hash`/`Requirements` 付きの正規の `renv::snapshot()` 産物である
+(issue #17 レビューで再生成・確認済み)。** `renv::hydrate()` でシステムライブラリの
+実体をプロジェクトライブラリへリンクし、`renv::snapshot(type = "explicit")` で書き直しても
+パッケージの集合・バージョンは(51本とも)一致し、版のズレは無かった。ただし既定の
+lockfile version 2(`RENV_LOCKFILE_VERSION` 未設定)は各パッケージの `Hash` を
+**書き出さない**仕様であることが分かった(renv 1.1.0 の変更で、`DESCRIPTION` の主要フィールドを
+そのまま lockfile に埋め込み、必要なら読む側で再計算する設計に変わったため)。CRAN 由来
+(`Repository` ソース)のレコードはこの再計算対象からも外れるため、version 2 のままでは
+実質的に `Hash` を持てない。`RENV_LOCKFILE_VERSION=1`(圧縮された旧形式。`renv` が現在も
+公式にサポートしている切替えオプション)を指定して同じ手順で再生成すると、51本すべてに
+`Hash`(と該当する場合は `Requirements`)が入った、行数も1/3程度に小さい lockfile が
+得られたため、これを採用した。**ただし `Hash` の有無は `renv::restore()` が
+ソースビルドに落ちる根本原因(CRAN が古い版のバイナリを配らない)とは無関係で、
+このフォーマット変更だけでは restore は直らない。** `Hash` はパッケージが既に
+renv のキャッシュに存在するときの高速な参照に使われるだけで、キャッシュに無いものは
+結局ソースからビルドされ、上記の `vctrs` と同じ理由で失敗する。直し方(リポジトリを
+日付スナップショットへ切り替える)は次の段落のまま、issue #19 に持ち越す。
 
 **直し方は分かっている（実施は issue #19、2026-08-19 決定）。** `renv.lock` に `>=` のような
 範囲指定は書けない(lock は常に厳密固定)ので、直すのはバージョン制約ではなく**リポジトリ**の方。
@@ -65,20 +103,28 @@ Rscript scripts/render_handson.R              # analysis/handson/*.Rmd を全部
 Rscript scripts/render_handson.R 00-setup      # 1本だけ(拡張子なしのファイル名)
 ```
 
+**1本だけレンダリングしたときも、`analysis/render_manifest.json` の他のエントリは
+消えません**(既存のマニフェストを読み込んで、指定した Rmd のエントリだけを
+上書きする)。マニフェストが「今存在する Rmd と完全に一致」するのは、引数なしで
+全部レンダリングしたときだけです(削除した Rmd のエントリはこのときに落ちます)。
+
 このスクリプトが行うこと:
 
 1. `analysis/handson/<name>.Rmd` を `knit_root_dir` = リポジトリのルートとして
    `rmarkdown::render(output_format = "md_document")` でレンダリングする(Rmd 側は
    `data/simulated/toy10_areas.csv` のようにルート相対でデータを読める)
 2. 生成した md を `docs/handson/<name>.md` に、図を
-   `docs/handson/figures/<name>-*.png` に書く(図の device は `ragg_png`。Windows で
-   日本語が化けないようにするため)
+   `docs/handson/figures/<name>-<チャンクラベル>-<連番>.png` に書く(図の device は
+   `ragg_png`。Windows で日本語が化けないようにするため。`fig.path` を
+   `docs/handson/figures/` へ直接向けているため、knitr の既定の出力先
+   `<name>_files/figure-*/` へは書き出されない)
 3. `.Rmd` ソースを `docs/handson/rmd/<name>.Rmd` にコピーする(サイトの各ページから
    ダウンロードできるようにするため)
 4. 生成した md の末尾に、その `.Rmd` コピーへのダウンロードリンクを自動で付け足す
-5. `analysis/render_manifest.json` に、レンダリングした各ファイルの SHA-256 を書く
-   (`scripts/check_handson_fresh.py` が R を実行せずに生成物の鮮度を検査するための
-   入力。詳細はリポジトリ直下の `CLAUDE.md` とそのスクリプト自身のコメントを参照)
+5. `analysis/render_manifest.json` に、レンダリングした各ファイル(と `data_inputs`
+   で宣言したデータファイル。下記参照)の SHA-256 を書く(`scripts/check_handson_fresh.py`
+   が R を実行せずに生成物の鮮度を検査するための入力。詳細はリポジトリ直下の
+   `CLAUDE.md` とそのスクリプト自身のコメントを参照)
 
 ### 新しい `.Rmd` を書くときの注意(図のチャンク)
 
@@ -101,6 +147,28 @@ src="..." ... />`)として出力します。MkDocs はディレクトリURL
 画像記法に**後処理で変換**しています(属性の順序には依存しない実装。実測で
 確認済み)。この変換のおかげで `fig.alt` は安全に使えますが、`fig.cap` は
 上記の理由でこの変換の対象にしていません。
+
+### 新しい `.Rmd` を書くときの注意(データの入力ファイル)
+
+Rmd が `data/simulated/toy10_areas.csv` のようなリポジトリ内のデータファイルを読む場合、
+YAML フロントマターに `data_inputs` としてそのファイルの(リポジトリルートからの)相対パスを
+書いてください(`analysis/handson/00-setup.Rmd` が実例です)。
+
+```yaml
+---
+title: "..."
+data_inputs:
+  - data/simulated/toy10_areas.csv
+---
+```
+
+`scripts/render_handson.R` がこれを読み、ファイルの SHA-256 を
+`analysis/render_manifest.json` に記録します。`scripts/check_handson_fresh.py` は
+このハッシュを実ファイルと照合するため、**Rmd 自体は変えずにデータだけを書き換えて
+再レンダリングを忘れた場合**(コードは古いデータのままだが `.Rmd` のハッシュは
+一致しているので、Rmd 自体のハッシュ照合では検出できないケース)を検出できます。
+省略可能です(データファイルを読まない Rmd は `data_inputs` を書かなくても
+問題なく動きます)。
 
 ## 個別の `.Rmd` を自分で knit する場合
 

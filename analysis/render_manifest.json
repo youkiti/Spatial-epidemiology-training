@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-19T08:55:37+0900",
+    "generated_at": "2026-08-19T11:34:25+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -8,20 +8,26 @@
     "00-setup": {
       "source_rmd": {
         "path": "analysis/handson/00-setup.Rmd",
-        "sha256": "7fdf913b433495fcb3b9130d6a5be0cfedf9099e6a6e5b1d3b1ca8417fd0eb7d"
+        "sha256": "d66bd316874224f4584f067419b9d45af0af606c334eda15544002f9733c51fa"
       },
       "output_md": {
         "path": "docs/handson/00-setup.md",
-        "sha256": "9583979a846f94b23013cbe2c227dc65011e400216c10ca881da2726f32bc06d"
+        "sha256": "74b91b170525412e4a718b51e1d3fcef529e4f15fc8c24cff2b0b7cf3616c5c0"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/00-setup.Rmd",
-        "sha256": "e0d19131186f2ded63b2a5e63f08ea14d5c08f560c22a7e89bab67132f426207"
+        "sha256": "d66bd316874224f4584f067419b9d45af0af606c334eda15544002f9733c51fa"
       },
+      "data_inputs": [
+        {
+          "path": "data/simulated/toy10_areas.csv",
+          "sha256": "5ca62cce7132c3cbf279361d23c9adb4e70ae60970ea55463e5753ff97dbdf85"
+        }
+      ],
       "figures": [
         {
-          "path": "docs/handson/figures/00-setup-1.png",
-          "sha256": "cc9e2f30ab8ef240cafed8a33a61829d686cea5a9d23484f5b77edf5cb213911"
+          "path": "docs/handson/figures/00-setup-toy10-rate-1.png",
+          "sha256": "7ded59d7a69ef898893b3a46559ef2d043dbf825501825ba9992317af7feb327"
         }
       ]
     }

@@ -1,5 +1,7 @@
 ---
 title: "ハンズオン⓪: 環境準備と進め方"
+data_inputs:
+  - data/simulated/toy10_areas.csv
 ---
 
 ```{r setup, include=FALSE}
@@ -47,14 +49,19 @@ theme_set(theme_minimal(base_family = jp_font, base_size = 13))
 
 ## 依存パッケージを揃える
 
-Rを開き、リポジトリの `analysis/` ディレクトリで `renv::restore()` を実行してください。
+**R を `analysis/` を作業ディレクトリにして起動してください**(RStudio なら `analysis/` を
+プロジェクトとして開く。ターミナルから起動する場合は `cd` で `analysis/` に入ってから
+`R` を起動する)。この状態で起動すると `analysis/.Rprofile` が自動で読み込まれ、renv が
+このプロジェクト専用のライブラリを有効化します。有効化できたら `renv::restore()` を
+実行してください。
 
 ```r
-setwd("analysis")       # リポジトリのルートから
 renv::restore()
 ```
 
-`renv.lock` に記録されたバージョンのパッケージが、このプロジェクト専用のライブラリにインストールされます(システムのライブラリやほかのRプロジェクトには影響しません)。
+`renv.lock` に記録されたバージョンのパッケージが、このプロジェクト専用のライブラリにインストールされます(システムのライブラリやほかのRプロジェクトには影響しません)。**`setwd("analysis")` してから `renv::restore()` を呼ぶだけでは不十分です**(`setwd()` は `analysis/.Rprofile` を読み込まないため renv が有効化されず、`renv::restore()` はシステムのライブラリに直接インストールしてしまいます)。**R の起動時に `analysis/` が作業ディレクトリになっている必要があります。**
+
+この有効化は R セッションの状態として保持されるので、次の節で作業ディレクトリをリポジトリのルートに `setwd()` し直しても解除されません。
 
 ## `.Rmd` をダウンロードして自分で実行する
 

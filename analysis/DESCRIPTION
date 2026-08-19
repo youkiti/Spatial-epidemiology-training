@@ -9,7 +9,8 @@ Description:
     analysis/handson/00-setup.Rmd(環境準備の説明と動作確認用の1枚の図)のみが
     存在し、Imports はこの1本と scripts/render_handson.R が実際に使うパッケージだけに
     絞ってある(digest と jsonlite は render_handson.R が render_manifest.json の
-    ハッシュ計算・書き出しに直接使う。どちらも rmarkdown 等の推移的依存として
+    ハッシュ計算・書き出しに直接使う。systemfonts は 00-setup.Rmd が
+    systemfonts::system_fonts() を直接呼ぶ。いずれも rmarkdown / ragg 等の推移的依存として
     既にライブラリにはあったが、直接呼ぶので明示した)。issue #18〜#20 で
     ハンズオンの中身(地図・Moran's I・LISA・Gi*・CAR/BYM・MAUP・ケーススタディ)を
     書く際に、sf・spdep・spatialreg 等を追加する想定。License フィールドは意図的に
@@ -23,5 +24,6 @@ Imports:
     ggplot2,
     dplyr,
     ragg,
+    systemfonts,
     digest,
     jsonlite
