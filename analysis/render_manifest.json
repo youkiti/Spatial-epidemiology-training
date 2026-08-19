@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-19T11:34:25+0900",
+    "generated_at": "2026-08-19T12:57:32+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -28,6 +28,68 @@
         {
           "path": "docs/handson/figures/00-setup-toy10-rate-1.png",
           "sha256": "7ded59d7a69ef898893b3a46559ef2d043dbf825501825ba9992317af7feb327"
+        }
+      ]
+    },
+    "01-map-moran-lisa-gi": {
+      "source_rmd": {
+        "path": "analysis/handson/01-map-moran-lisa-gi.Rmd",
+        "sha256": "e2db8dd5d0dec4ea243f870ed2e517095002f0a6d392738473c9596e24817fdf"
+      },
+      "output_md": {
+        "path": "docs/handson/01-map-moran-lisa-gi.md",
+        "sha256": "5e8e5dc728398c83757f293f202333fc4869e7393dd5e4ffe928bdd63a5258c9"
+      },
+      "distributed_rmd": {
+        "path": "docs/handson/rmd/01-map-moran-lisa-gi.Rmd",
+        "sha256": "e2db8dd5d0dec4ea243f870ed2e517095002f0a6d392738473c9596e24817fdf"
+      },
+      "data_inputs": [
+        {
+          "path": "data/simulated/toy10_areas.csv",
+          "sha256": "5ca62cce7132c3cbf279361d23c9adb4e70ae60970ea55463e5753ff97dbdf85"
+        },
+        {
+          "path": "data/simulated/toy10_neighbors.csv",
+          "sha256": "254cbdc1ff718219443f4b9b613e869e3a28a67cad188a7587f3ac883979bee7"
+        },
+        {
+          "path": "data/simulated/lattice_areas.csv",
+          "sha256": "e1101fa6bbdda2fe53acc94b65086f68ec6d3a042d9071e7c9f3640939b6d265"
+        },
+        {
+          "path": "data/simulated/lattice_neighbors.csv",
+          "sha256": "781f86239919eb13f274fd4a476e91522910152015da0159b2b5bdf47fda3a97"
+        }
+      ],
+      "figures": [
+        {
+          "path": "docs/handson/figures/01-map-moran-lisa-gi-gistar-map-lattice-1.png",
+          "sha256": "e13f6a9a0ba6f5aea9c46e7cc218fefb366d76ffeace4ffec47fdab02eb30912"
+        },
+        {
+          "path": "docs/handson/figures/01-map-moran-lisa-gi-gistar-map-toy10-1.png",
+          "sha256": "d9004ac282c54a391707e1fc8fa7fe441e9206d28ee149492b776d773cd85054"
+        },
+        {
+          "path": "docs/handson/figures/01-map-moran-lisa-gi-lisa-quadrant-map-lattice-1.png",
+          "sha256": "75225a7a69c02207b3a08a6346b5e377081f43a38199fcaa4c239c510c1e5bff"
+        },
+        {
+          "path": "docs/handson/figures/01-map-moran-lisa-gi-lisa-quadrant-map-toy10-1.png",
+          "sha256": "8b04fe4125a9285de8d492ff675d14773d08093249d9bbff6255d351cb4a3dcd"
+        },
+        {
+          "path": "docs/handson/figures/01-map-moran-lisa-gi-map-count-toy10-1.png",
+          "sha256": "601259465f11d1dd9eae2fb2015590fb5fe586fec2522c55899ff0314b2af418"
+        },
+        {
+          "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-lattice-1.png",
+          "sha256": "5d932b61e4504aae3c7c0bb3cef851cd38e28edd555c7d8915a443e2798a4401"
+        },
+        {
+          "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-toy10-1.png",
+          "sha256": "3ed3d29517b3a1cb7da39a2c51e2af54c4ccdf0628771b8904b197465835f3b8"
         }
       ]
     }

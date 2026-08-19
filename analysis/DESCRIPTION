@@ -8,13 +8,14 @@ Description:
     renv (renv.lock) で依存パッケージのバージョンを固定する。issue #17 の時点では
     analysis/handson/00-setup.Rmd(環境準備の説明と動作確認用の1枚の図)のみが
     存在し、Imports はこの1本と scripts/render_handson.R が実際に使うパッケージだけに
-    絞ってある(digest と jsonlite は render_handson.R が render_manifest.json の
+    絞ってあった(digest と jsonlite は render_handson.R が render_manifest.json の
     ハッシュ計算・書き出しに直接使う。systemfonts は 00-setup.Rmd が
     systemfonts::system_fonts() を直接呼ぶ。いずれも rmarkdown / ragg 等の推移的依存として
-    既にライブラリにはあったが、直接呼ぶので明示した)。issue #18〜#20 で
-    ハンズオンの中身(地図・Moran's I・LISA・Gi*・CAR/BYM・MAUP・ケーススタディ)を
-    書く際に、sf・spdep・spatialreg 等を追加する想定。License フィールドは意図的に
-    省いてある。リポジトリのライセンスは未決定のため(CLAUDE.md
+    既にライブラリにはあったが、直接呼ぶので明示した)。issue #18 で
+    analysis/handson/01-map-moran-lisa-gi.Rmd(地図・Global Moran's I・LISA・Gi*)を
+    書いたことに伴い spdep を追加した。issue #19〜#20 で CAR/BYM・MAUP・ケーススタディを
+    書く際に、sf・spatialreg・CARBayes 等をさらに追加する想定。License フィールドは
+    意図的に省いてある。リポジトリのライセンスは未決定のため(CLAUDE.md
     「未決定事項(実装前にユーザーに確認する)」の1番目。CC BY 4.0 が候補)、決まり
     次第記入する。
 Encoding: UTF-8
@@ -26,4 +27,5 @@ Imports:
     ragg,
     systemfonts,
     digest,
-    jsonlite
+    jsonlite,
+    spdep
