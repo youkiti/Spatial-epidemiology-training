@@ -35,14 +35,16 @@ renv::restore()
 `analysis/handson/00-setup.Rmd` 1本と `scripts/render_handson.R` が使うパッケージ
 (`rmarkdown`, `knitr`, `ggplot2`, `dplyr`, `ragg`, `digest`, `jsonlite`)のみが対象です。
 issue #18〜#20 でハンズオンの中身(地図・Moran's I・LISA・Gi\*・CAR/BYM・MAUP・
-ケーススタディ)を書く際に、`sf`・`spdep`・`spatialreg` 等を `DESCRIPTION` に足して
-`renv::snapshot()` し直す想定です。**このとき `analysis/.Rprofile` が有効化された
+ケーススタディ)を書く際に、`sf`・`spdep`・`CARBayes` を実際に `DESCRIPTION` に足して
+`renv::snapshot()` し直しました(#18 で `spdep`、#20 で `sf`、#19 で `CARBayes`。
+`spatialreg` は CARBayes のみで CAR/BYM が完結したため結局 `Imports` には入っていません)。
+**このとき `analysis/.Rprofile` が有効化された
 セッション(= `analysis/` を作業ディレクトリにして起動した R)から実行してください。**
 `analysis/.Rprofile` は `options(renv.lockfile.version = 1)` を設定しており、これが
 無いセッションから `renv::snapshot()` すると既定の lockfile version 2 に戻り、
-`analysis/renv.lock` が(51本→変わらないが)`Hash`/`Requirements` を失って
-再び1,950行前後まで膨れる(下記参照)。これは飾りの注意書きではなく、外すと
-静かに壊れる設定なので必ず守ってください。
+`analysis/renv.lock` が(パッケージの本数自体は変わらないが)`Hash`/`Requirements` を失って
+再び行数が数倍に膨れます(理由は下記『なぜ lockfile version 1 か』を参照)。これは
+飾りの注意書きではなく、外すと静かに壊れる設定なので必ず守ってください。
 
 **上の `restore()` の節で勧めている `renv::load("analysis")` は、`snapshot()` の
 ためのセッション有効化としては不十分です。** `renv::load()` はライブラリパスを
@@ -53,12 +55,12 @@ version 2 の lockfile に戻ります(2026-08-19、issue #18 で実際に踏み
 `snapshot()` するときは `renv::load()` に頼らず、`analysis/` を作業ディレクトリにして
 R(`Rscript` 含む)そのものを起動してください。
 
-### `renv::restore()` は Windows でソースビルドに落ちる(2026-08-19 時点で未解決)
+### `renv::restore()` は Windows でソースビルドに落ちる問題を P3M の日付スナップショットで解決した(issue #19、2026-08-20)
 
 CRAN が Windows 向けのバイナリを配布しているのは、基本的に**各パッケージの最新版だけ**です。
 `renv.lock` は執筆時点のバージョンを固定するため、ロックした版が最新でなくなった時点で
 バイナリが引けなくなり、`renv::restore()` はソースからのビルドに切り替わります。
-実測(2026-08-19): lock が固定している `vctrs` は 0.6.5 だが、CRAN が R 4.5 向けに配布している
+実測(2026-08-19): lock が固定していた `vctrs` は 0.6.5 だが、CRAN が R 4.5 向けに配布している
 Windows バイナリは 0.7.3 で、0.6.5 はソースビルドの対象になる。
 
 この開発環境では **Rtools45 が導入済みであるにもかかわらず**、その `vctrs` 0.6.5 の
@@ -66,42 +68,120 @@ Windows バイナリは 0.7.3 で、0.6.5 はソースビルドの対象にな�
 `** byte-compile and prepare package for lazy loading` の段で
 `ERROR: lazy loading failed for package 'vctrs'` になる。
 
-**これは vctrs 固有の問題ではない。** `renv.lock` の51本中30本が CRAN 最新とズレており
-(`ggplot2` 4.0.1→4.0.3、`rlang` 1.1.7→1.3.0 ほか)、全部がソースビルド対象になる。
-個別のパッケージを上げても直らない。
+**これは vctrs 固有の問題ではなかった。** issue #17 時点の `renv.lock`(51本)のうち30本が
+CRAN 最新とズレており(`ggplot2` 4.0.1→4.0.3、`rlang` 1.1.7→1.3.0 ほか)、全部がソースビルド
+対象になっていた。#18 で `spdep` を足して69本に増えた時点でも事情は同じだった。個別の
+パッケージを上げても直らない。`renv.lock` に `>=` のような範囲指定は書けない
+(lock は常に厳密固定)ため、直すべきはバージョン制約ではなく**リポジトリ**だった。
 
-**`renv.lock` は `Hash`/`Requirements` 付きの正規の `renv::snapshot()` 産物である
-(issue #17 レビューで再生成・確認済み)。** `renv::hydrate()` でシステムライブラリの
-実体をプロジェクトライブラリへリンクし、`renv::snapshot(type = "explicit")` で書き直しても
-パッケージの集合・バージョンは(51本とも)一致し、版のズレは無かった。ただし既定の
-lockfile version 2(`RENV_LOCKFILE_VERSION` 未設定)は各パッケージの `Hash` を
-**書き出さない**仕様であることが分かった(renv 1.1.0 の変更で、`DESCRIPTION` の主要フィールドを
-そのまま lockfile に埋め込み、必要なら読む側で再計算する設計に変わったため)。CRAN 由来
-(`Repository` ソース)のレコードはこの再計算対象からも外れるため、version 2 のままでは
-実質的に `Hash` を持てない。`RENV_LOCKFILE_VERSION=1`(圧縮された旧形式。`renv` が現在も
-公式にサポートしている切替えオプション)を指定して同じ手順で再生成すると、51本すべてに
-`Hash`(と該当する場合は `Requirements`)が入った、行数も1/3程度に小さい lockfile が
-得られたため、これを採用した。**ただし `Hash` の有無は `renv::restore()` が
-ソースビルドに落ちる根本原因(CRAN が古い版のバイナリを配らない)とは無関係で、
-このフォーマット変更だけでは restore は直らない。** `Hash` はパッケージが既に
-renv のキャッシュに存在するときの高速な参照に使われるだけで、キャッシュに無いものは
-結局ソースからビルドされ、上記の `vctrs` と同じ理由で失敗する。直し方(リポジトリを
-日付スナップショットへ切り替える)は次の段落のまま、issue #19 に持ち越す。
+**なぜ lockfile version 1 か。** `renv.lock` は `Hash`/`Requirements` 付きの正規の
+`renv::snapshot()` 産物です(issue #17 レビューで再生成・確認済み)。既定の lockfile
+version 2(`RENV_LOCKFILE_VERSION` 未設定)は各パッケージの `Hash` を**書き出さない**仕様
+(renv 1.1.0 の設計変更で、`DESCRIPTION` の主要フィールドをそのまま lockfile に埋め込み、
+必要なら読む側で再計算する方式に変わったため)なので、`RENV_LOCKFILE_VERSION=1`(圧縮された
+旧形式。`renv` が現在も公式にサポートしている切替えオプション)を指定して、`Hash`/
+`Requirements` 付きの小さい lockfile を生成しています。**ただし `Hash` の有無は
+`renv::restore()` がソースビルドに落ちる根本原因(CRAN が古い版のバイナリを配らないこと)
+とは無関係で、フォーマットを直しただけでは restore は直りません。** `Hash` はパッケージが
+既に renv のキャッシュに存在するときの高速な参照に使われるだけで、キャッシュに無いものは
+結局ソースからビルドされ、上記の `vctrs` と同じ理由で失敗します(直し方は下記の通り)。
 
-**直し方は分かっている（実施は issue #19、2026-08-19 決定）。** `renv.lock` に `>=` のような
-範囲指定は書けない(lock は常に厳密固定)ので、直すのはバージョン制約ではなく**リポジトリ**の方。
-過去版のバイナリを配る [Posit Public Package Manager](https://packagemanager.posit.co/) の
-日付スナップショット(例: `https://packagemanager.posit.co/cran/2025-12-01`)を
-`renv.lock` の `Repositories` に指定すれば、厳密固定のままバイナリで引ける。
-`CARBayes` を入れて R 環境を触る issue #19 の中でまとめて行う。それまでは
-`renv.lock` は「どの版で生成したか」の記録として機能させる。
+**直し方: `renv.lock` の `Repositories` を [Posit Public Package Manager](https://packagemanager.posit.co/) の
+日付スナップショットに向けた。** 過去版のバイナリをそのまま配布しているため、厳密固定のまま
+バイナリで引ける。採用したのは `https://packagemanager.posit.co/cran/2025-11-01`。
+
+**なぜ 11-01 か。** `sf` 1.0-21 / `spdep` 1.4-1 を据え置ける最も新しい日付だから。この2本は
+`poly2nb()` / `mat2listw()` のプロセス終了時クラッシュ(上の「環境」節、および
+リポジトリ直下の `CLAUDE.md`)という、リポジトリ全体の回避策設計が依存している挙動を
+確認した版であり、版を動かすとこの挙動の再確認が挟まる。実測(2026-08-20):
+
+| 日付 | sf | spdep | CARBayes | ggplot2 |
+|---|---|---|---|---|
+| **2025-11-01(採用)** | **1.0-21** | **1.4-1** | 6.1.1 | 4.0.0 |
+| 2025-11-15 | 1.0-22 | 1.4-1 | 6.1.1 | 4.0.0 |
+| 2025-11-22 | 1.0-22 | 1.4-1 | 6.1.1 | 4.0.1 |
+| 2025-12-01 | 1.0-23 | 1.4-1 | 6.1.1 | 4.0.1 |
+
+**`sf` 1.0-21 と `ggplot2` 4.0.1 が両立する日付は存在しない。** 11-01 を採ったことで
+`ggplot2` は lock 上 4.0.1 → 4.0.0 に下がった(代償については本節末尾を参照)。
+
+**lock の変化: 69本 → 126本。** 増えた57本は `CARBayes` の(推移的な)Imports が重いため
+(`mapview`・`leaflet`・`GGally`・`glmnet`・`igraph`・`CARBayesdata`・`MCMCpack` など)。
+削除されたパッケージは0本。**版が動いたのは既存69本のうち7本だけ**:
+`ggplot2` 4.0.1→4.0.0、`rlang` 1.1.7→1.1.6、`lifecycle` 1.0.5→1.0.4、`fs` 1.6.7→1.6.6、
+`xfun` 0.55→0.54、`textshaping` 1.0.3→**1.0.4(上がった)**、`renv` 1.1.6→1.1.5(下記(a)参照)。
+`sf` 1.0.21 / `spdep` 1.4.1 は据え置き。126本すべてに `Hash` があり、lockfile version 1
+形式(上記「なぜ lockfile version 1 か」の段落参照)は維持している。
+
+**検証結果:**
+
+1. 126本すべてが P3M 2025-11-01 の Windows バイナリ(`bin/windows/contrib/4.5/PACKAGES`)に
+   バージョン完全一致で実在する。つまり renv のキャッシュが空の環境でも、ソースビルドは
+   1件も発生しない
+2. プロジェクトライブラリを空にした状態から `renv::restore()` が完走した。117本をインストール
+   (残り9本は `Matrix`・`survival` など R 同梱の base/recommended で既に存在)。
+   **ソースビルド0件・エラー0件**、すべて `linked from cache` / `installed binary`
+3. `DESCRIPTION` の Imports 11本が復元後に揃うことを `packageVersion()` で確認:
+   `rmarkdown` 2.30 / `knitr` 1.50 / `ggplot2` 4.0.0 / `dplyr` 1.1.4 / `ragg` 1.5.0 /
+   `systemfonts` 1.3.1 / `digest` 0.6.37 / `jsonlite` 2.0.0 / `spdep` 1.4.1 / `sf` 1.0.21 /
+   `CARBayes` 6.1.1
+
+**途中で踏んだ罠(次に lock を触る人のために書いておく):**
+
+**(a) lockfile を日付スナップショットに向けると、renv 自身のブートストラップが壊れうる。**
+`analysis/renv/activate.R` の `renv_bootstrap_repos()` は、**lockfile の `Repositories` を
+最優先で読む**。`activate.R` は自分が要求する renv の版を先頭で固定している(`version <- "..."`)。
+lockfile を 2025-11-01 に向けた時点で、`activate.R` が要求していた renv **1.1.6** はその
+スナップショットに存在せず(あるのは **1.1.5**)、**空のプロジェクトライブラリから R を
+起動すると renv がロードされる前に落ちた**:
+
+```
+# Bootstrapping renv 1.1.6 ---------------------------------------------------
+- Downloading renv ... FAILED
+h(simpleError(msg, call)) でエラー: failed to download:
+All download methods failed
+```
+
+**日付スナップショットを採用するときは、renv 自身もそのスナップショットに存在する版へ
+揃える必要がある。** `renv::install("renv@1.1.5")` して `renv::activate()` で `activate.R` を
+書き直し、`renv::snapshot()` で lock にも反映した。修正後は同じ空ライブラリから
+
+```
+# Bootstrapping renv 1.1.5 ---------------------------------------------------
+- Downloading renv ... OK
+- Installing renv  ... OK
+```
+
+となり、restore まで通る。
+
+**(b) `renv::activate()` は「いまロードされている renv の版」で `activate.R` を書く。**
+`renv::install("renv@1.1.5")` の直後に同じセッションで `renv::activate()` を呼んでも、
+`activate.R` の version は 1.1.6 のままだった(renv 自身が「Restart your R session to use
+the new versions」と出す通り)。`Rscript --vanilla` で `.Rprofile` を読ませず、`.libPaths()`
+にプロジェクトライブラリを足して `library(renv)` で 1.1.5 をロードしてから
+`renv::activate(project = ...)` を呼ぶ必要がある。
+
+**(c) renv 1.1.x のプロジェクトライブラリは `analysis/renv/library/` に無い。** 実体は
+`%LOCALAPPDATA%/R/cache/R/renv/library/<プロジェクト名>-<ハッシュ>/windows/R-4.5/x86_64-w64-mingw32/`。
+`analysis/renv/library` を消しても何も起きず、`renv::restore()` は「The library is already
+synchronized with the lockfile.」と言って**何もせずに成功する**。restore を実測で検証する
+ときは、この実体の方を退避すること(消さずに `mv` すれば戻せる)。
+
+**代償: コミット済みの図と `renv.lock` の版が一致しなくなった。** `ggplot2` は lock 上
+4.0.1 → 4.0.0 に下がったが、**コミット済みの図はシステムライブラリの `ggplot2` 4.0.1 で
+生成されている**(下記「レンダリング自体は renv に依存しない」節の通り、レンダリングは
+renv 経由ではなくシステムライブラリで行うため)。つまり `renv.lock` は「`restore()` で
+復元できる、厳密固定された組」であって、「コミット済みの成果物を生成した版そのもの」とは
+もう一致しない。以前この節は「`renv.lock` は『どのバージョンで生成したか』の記録として
+第一に機能する」と書いていたが、11-01 への切り替え後は正確ではないため訂正する。
 
 **レンダリング自体は renv に依存しません。** `scripts/render_handson.R` は
 リポジトリのルートから起動するため `analysis/.Rprofile`(renv の自動 activate)を読まず、
 システムライブラリのパッケージで動きます。`renv::restore()` が通らない環境でも、
-`renv.lock` に記録されたのと同じバージョンがシステムライブラリに入っていれば
-レンダリングはできます。`renv.lock` は「どのバージョンで生成したか」の記録として
-第一に機能します。
+システムライブラリに必要なバージョンが入っていればレンダリングはできます。
+`renv.lock` は「`renv::restore()` で再現できる依存関係の組」を記録するものであり、
+システムライブラリ(レンダリングに実際使われる版)とは独立に管理されている、という
+前提で読んでください。
 
 ## レンダリングの実行方法
 

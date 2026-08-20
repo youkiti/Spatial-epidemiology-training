@@ -8,18 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 公開先: <https://youkiti.github.io/Spatial-epidemiology-training/>
 
-**残っている open issue は Phase3 のハンズオン4本だけ**（#17〜#20）。**着手前に必ず GitHub の issue 本文を読むこと**（受け入れ条件と cloud 可否がそこに書いてある）。
+**Phase3 のハンズオン4本（#17〜#20）のうち #17・#18・#20 は main にマージ済み。** 残る #19（CAR/BYM）は実装・`renv` の依存解決まで完了し、マージ待ちの段階（2026-08-20時点）。#20 のレビューを受けて追加対応の issue #37〜#40 が起票されている。**着手前に必ず GitHub の issue 本文を読むこと**（受け入れ条件と cloud 可否がそこに書いてある）。
 
-| issue | 内容 | 依存 |
+| issue | 内容 | 状態 |
 |---|---|---|
-| #17 | Rmd レンダリング配管（Rmd → md + 図 → `docs/handson/`）、`renv.lock`、成果物の鮮度CIチェック | #2・#6 |
-| #18 | ハンズオン1〜2「地図 → Global Moran's I → LISA → Gi\*」 | #17 |
-| #19 | ハンズオン3「CAR / BYM」 | #18 |
-| #20 | ハンズオン4「MAUP の実演 — 都道府県 vs 二次医療圏」 | #18 |
+| #17 | Rmd レンダリング配管（Rmd → md + 図 → `docs/handson/`）、`renv.lock`、成果物の鮮度CIチェック | main にマージ済み |
+| #18 | ハンズオン1〜2「地図 → Global Moran's I → LISA → Gi\*」 | main にマージ済み |
+| #19 | ハンズオン3「CAR / BYM」 | 実装・renv解決済み（マージ待ち） |
+| #20 | ハンズオン4「MAUP の実演 — 都道府県 vs 二次医療圏」 | main にマージ済み |
+| #37〜#40 | #20 レビュー由来の追加対応 | 起票済み・対応中 |
 
-依存は一直線で **#17 → #18 → (#19, #20)**。#19 と #20 は #18 が済めば並行できる。
+依存は元々一直線だった: #17 → #18 → (#19, #20)。#19 と #20 は #18 が済めば並行できる、という前提で進んだ。
 
-**4本とも `local-only`。R が要るため、クラウドセッションで進められる issue はもう無い。**
+**Phase3の4本はいずれも `local-only`。R が要るため、クラウドセッションで進められる issue はもう無い。**
 
 ```
 documents/       設計の正本3文書。実装より先にここを読む
@@ -196,8 +197,8 @@ python scripts/check_handson_fresh.py      # 生成物が最新か（R を実行
 
 R パッケージ:
 
-- **導入済み**: `sf` 1.0.21, `spdep` 1.4.1, `spatialreg` 1.4.2, `ggplot2` 4.0.1, `dplyr` 1.1.4, `rmarkdown` 2.30, `knitr` 1.50
-- **未導入**: `tmap`, `sfdep`, `leaflet`, `SpatialEpi`, `CARBayes`, `INLA`, `jpndistrict`, `NipponMap`
+- **導入済み**: `sf` 1.0.21, `spdep` 1.4.1, `spatialreg` 1.4.2, `ggplot2` 4.0.1, `dplyr` 1.1.4, `rmarkdown` 2.30, `knitr` 1.50, `CARBayes` 6.1.1（issue #19 で導入。この版一覧はシステムライブラリの版で、`analysis/renv.lock` が固定する版とは独立に管理されている。`ggplot2` は lock 側だと 4.0.0 — 理由は下記「`renv::restore()`」節と `analysis/README.md` 参照）
+- **未導入**: `tmap`, `sfdep`, `leaflet`, `SpatialEpi`, `INLA`, `jpndistrict`, `NipponMap`
 
 Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test` / `localmoran` / `localG`）ので、段階1〜2 は追加インストールなしで書ける。CAR/BYM に進む時点で `CARBayes` か `INLA` の選択が必要。**`INLA` は CRAN ではなく専用リポジトリからの導入**で、読者に要求するハードルが `CARBayes` より高い。
 
@@ -209,15 +210,13 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 
 **`ragg` / `systemfonts` を読み込んだ R プロセスも終了時に落ちる**（Git Bash 経由で終了コード127。issue #17 で実測）。`mat2listw()` / `poly2nb()` と同種で、出力自体は最後まで正常に完了する。図の device に `ragg_png` を使うのは Windows で図中の日本語が豆腐にならないためで、避けられない。**`scripts/render_handson.R` の成否を終了コードで判定しないこと** — 正常終了時に stdout の最後へ `RENDER_HANDSON_OK` を出すので、その有無で判定する。
 
-**`renv::restore()` はこの環境で完走しない（2026-08-19 時点。対応は issue #19 に持ち越し）。** CRAN が配布する Windows バイナリは各パッケージの**最新版だけ**なので、`analysis/renv.lock` が固定する版はソースビルドになる。実測: `vctrs` は lock が 0.6.5、CRAN の R 4.5 向けバイナリは 0.7.3。Rtools45 は入っているのでツールチェーンの問題ではなく、C のコンパイルは最後まで通ったうえで `** byte-compile and prepare package for lazy loading` の段で `ERROR: lazy loading failed for package 'vctrs'` になる（独立に再現済み）。
+**`renv::restore()` は P3M の日付スナップショットに向けることで完走するようになった（issue #19、2026-08-20）。** CRAN が配布する Windows バイナリは各パッケージの**最新版だけ**なので、`analysis/renv.lock` が固定する版が最新でなくなるとソースビルドになる。実測（2026-08-19）: `vctrs` は lock が 0.6.5、CRAN の R 4.5 向けバイナリは 0.7.3。Rtools45 は入っているのでツールチェーンの問題ではなく、C のコンパイルは最後まで通ったうえで `** byte-compile and prepare package for lazy loading` の段で `ERROR: lazy loading failed for package 'vctrs'` になった（独立に再現済み）。これは vctrs 固有ではなく、issue #17 時点の lock（51本）のうち30本が CRAN 最新とズレていた（#18 で `spdep` を足して69本になった時点でも事情は同じだった）。**`renv.lock` に `>=` は書けない**（lock は常に厳密固定）ため、直すべきはバージョン制約ではなく**リポジトリ**だった。
 
-**これは vctrs 固有ではない。** lock の51本中**30本**が CRAN 最新とズレており（`ggplot2` 4.0.1→4.0.3、`rlang` 1.1.7→1.3.0、`knitr` 1.50→1.51 ほか）、全部がソースビルド対象になる。**個別のパッケージを上げても直らない。**
+**`analysis/renv.lock` は `Hash`/`Requirements` 付きの正規の `renv::snapshot()` 産物（issue #17 レビューで再生成・確認済み。手順と詳細は `analysis/README.md` 参照）。** 再 snapshot するときは `renv::load()` では不十分（`.Rprofile` が読まれず lockfile version が既定の2に戻る）なので、必ず `analysis/` を作業ディレクトリにして R を起動すること。詳細は `analysis/README.md` 参照。
 
-**`analysis/renv.lock` は `Hash`/`Requirements` 付きの正規の `renv::snapshot()` 産物（issue #17 レビューで再生成・確認済み。手順と詳細は `analysis/README.md` 参照）。** ただし `Hash` の有無はこの節で説明している restore 失敗の原因（CRAN が古い版のバイナリを配らないこと）とは無関係で、フォーマットを直しただけでは restore は直らない。直し方は下記の通り、issue #19 に持ち越し。再 snapshot するときは `renv::load()` では不十分（`.Rprofile` が読まれず lockfile version が既定の2に戻る）なので、必ず `analysis/` を作業ディレクトリにして R を起動すること。詳細は `analysis/README.md` 参照。
+**直し方: `Repositories` を Posit Public Package Manager (P3M) の日付スナップショット `https://packagemanager.posit.co/cran/2025-11-01` に向けた。** `sf` 1.0-21 / `spdep` 1.4-1（`poly2nb()` / `mat2listw()` のプロセス終了時クラッシュを確認した版）を据え置ける最も新しい日付で、`sf` 1.0-21 と `ggplot2` 4.0.1 が両立する日付は存在しないため、代償として `ggplot2` は lock 上 4.0.1 → 4.0.0 に下がった。lock は 69本 → **126本**（`CARBayes` の推移的依存で57本増、削除は0本、版が動いたのは既存69本のうち7本のみ）。**空のプロジェクトライブラリから `renv::restore()` が完走し、ソースビルド0件・エラー0件を実測で確認した。** 実測の全数値・restore 検証の手順・踏んだ罠（日付スナップショットに向けると `analysis/renv/activate.R` が固定する renv 自身の版もそのスナップショットに存在する版へ揃える必要がある、など）は `analysis/README.md` の該当節が正本。
 
-**`renv.lock` に `>=` は書けない**（lock は常に厳密固定。範囲を書けるのは `DESCRIPTION` の `Imports:` だが `restore()` はそこを見ない）。したがって直すべきはバージョン制約ではなく**リポジトリ**で、過去版のバイナリを配る Posit Public Package Manager の日付スナップショットに向ければ、厳密固定のままバイナリで引ける。実測: `https://packagemanager.posit.co/cran/2025-12-01/bin/windows/contrib/4.5/PACKAGES` には `vctrs` 0.6.5・`ggplot2` 4.0.1 があり、現 lock の51本中41本が一致する（残り10本は取得時期がバラけていて単一日付に揃わないため、揃える過程で動く）。
-
-**レンダリングは renv に依存しない** — `scripts/render_handson.R` はリポジトリのルートから起動するため `analysis/.Rprofile`（renv の自動 activate）を読まず、システムライブラリで動く。`renv.lock` は当面「どのバージョンで生成したか」の記録として機能する。
+**レンダリングは renv に依存しない** — `scripts/render_handson.R` はリポジトリのルートから起動するため `analysis/.Rprofile`（renv の自動 activate）を読まず、システムライブラリで動く。**ただし `renv.lock` はもう「どのバージョンで生成したか」の記録ではない** — 11-01 への切り替えで `ggplot2` が lock 上 4.0.0 になった一方、コミット済みの図はシステムライブラリの `ggplot2` 4.0.1 で生成されている。`renv.lock` は「`renv::restore()` で再現できる依存関係の組」を記録するものとして読むこと。
 
 **実ポリゴンを扱うときは `sf::sf_use_s2(FALSE)` が要る。** s2 有効のままだと `st_make_valid()` が一部ジオメトリを修復しきれず（実測: 新宮 3007）、`poly2nb()` がさらに強く落ちる。A38 由来の339区域では7件が `st_is_valid()` で不正、s2 を切れば `st_make_valid()` で全件修復できる。
 
@@ -225,7 +224,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 
 `scripts/verify_simulation.R` は R 4.5.2 / spdep 1.4.1 で実行・検証済み（2026-08-18）で、Python 版と出力が一致することを確認済み。
 
-**R側の依存マニフェスト（`renv.lock` 等）はまだ無い。** Rハンズオン（issue #17〜#20）に着手する時点で入れる。
+**R側の依存マニフェストは `analysis/renv.lock` が正本（issue #17 で導入、issue #19 で P3M 2025-11-01 に固定し直した）。** バージョンの経緯・restore が通ることの実測は上記「`renv::restore()`」節と `analysis/README.md` を参照。
 
 ## 決定済み（もう議論しない）
 
@@ -236,7 +235,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 - **記述言語** = 日本語のみ（i18n は入れない）
 - **境界データの入手元** = 国土数値情報の医療圏データ（A38）。隣接リポジトリ <https://github.com/youkiti/visualize-regional-medical-care-for-2040> の `doc/DATA_SOURCES.md` に取得手順と罠が文書化されている
 - **架空データと実データの役割分担** = 架空の10市町村データは概念導入用、専門医名簿はケーススタディ専用
-- **`renv::restore()` を直すのは issue #19 の中で**（2026-08-19 決定）。今の lock は「どの版で生成したか」の記録として機能させ、#19 で `CARBayes` を入れて R 環境を触るときに、リポジトリを P3M の日付スナップショットへ切り替えてまとめて直す。**#18 は現行の検証済み環境のまま進めてよい** — 先に版を動かすと `sf` 1.0.21 / `spdep` 1.4.1 で確認した `poly2nb()` / `mat2listw()` の終了時クラッシュを再確認する手間が #18 の前に挟まるため。詳細は「環境」節
+- **`renv::restore()` の修正は issue #19 の中で実施済み**（2026-08-19 決定 → 2026-08-20 実施）。決定時の方針どおり、#18 は先に版を動かさず現行の検証済み環境のまま進め（先に動かすと `sf` 1.0.21 / `spdep` 1.4.1 で確認した `poly2nb()` / `mat2listw()` の終了時クラッシュを再確認する手間が #18 の前に挟まるため）、#19 で `CARBayes` を入れて R 環境を触るタイミングでリポジトリを P3M の日付スナップショット（`2025-11-01`）へ切り替えてまとめて直した。`sf` 1.0.21 / `spdep` 1.4.1 は据え置いたまま、空のプロジェクトライブラリから `renv::restore()` が完走することを実測で確認済み。詳細は「環境」節と `analysis/README.md`
 - **CAR/BYM の実装** = `CARBayes`（issue #19 本文で確定）。`INLA` は CRAN ではなく専用リポジトリからの導入で読者に要求するハードルが高いため、コラムで触れるに留める
 - **簡略化済み（表示専用）GeoJSON を隣接判定に使ってよいか** = 使ってよい。`snap=0` と `snap=0.0001`（座標丸め幅と同程度）で queen contiguity の隣接ペアが完全一致した（1,558件、集合差0件）ため、0.0001度丸めは隣接判定に影響していない。本採用は `snap=0`。測定手順と全診断は `scripts/build_geo.R` と `data/geo/adjacency_diagnostics.md`
 
