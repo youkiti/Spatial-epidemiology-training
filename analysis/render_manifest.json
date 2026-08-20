@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-20T09:09:27+0900",
+    "generated_at": "2026-08-20T12:05:47+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -150,15 +150,15 @@
     "03-maup": {
       "source_rmd": {
         "path": "analysis/handson/03-maup.Rmd",
-        "sha256": "f1cfcb5925067f36d41be1eb8ced73970224dd56aaa25a87862031345249526c"
+        "sha256": "c24ad549bf2d442a98bafa5a0003c2ffc38d8e1a9576c248efaf63cc50558d58"
       },
       "output_md": {
         "path": "docs/handson/03-maup.md",
-        "sha256": "11a8d15003c6d4b63d35e3c838573725afda8eb495aaf2322159a7d3d83b9b8c"
+        "sha256": "f2c7491048db8d933509d7a70c1c2774cafdb7a10818ea37a8018a59cdadce91"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/03-maup.Rmd",
-        "sha256": "f1cfcb5925067f36d41be1eb8ced73970224dd56aaa25a87862031345249526c"
+        "sha256": "c24ad549bf2d442a98bafa5a0003c2ffc38d8e1a9576c248efaf63cc50558d58"
       },
       "data_inputs": [
         {
@@ -197,11 +197,11 @@
       "figures": [
         {
           "path": "docs/handson/figures/03-maup-map-gi-iryoken2-1.png",
-          "sha256": "584d2867d656df7b89e462a7e586aa55156c5404c4466b320126370c78944e51"
+          "sha256": "da5437e7ebb5cd3c0b85e1545cf34fcfa11ad682bee0ab4fe7471a7e220f58ce"
         },
         {
           "path": "docs/handson/figures/03-maup-map-gi-pref-1.png",
-          "sha256": "15f1237f95be34c0f3d67035c9658ec8ffee7823e8b68e518dd5800f6cf130b8"
+          "sha256": "5715093e07777790f964029af407e8c6b4d1773d0a9c60a5881921ed96fc416f"
         },
         {
           "path": "docs/handson/figures/03-maup-map-iryoken2-rate-1.png",
