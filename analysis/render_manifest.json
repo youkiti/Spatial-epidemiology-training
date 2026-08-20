@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-19T15:21:30+0900",
+    "generated_at": "2026-08-20T09:09:27+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -90,6 +90,72 @@
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-toy10-1.png",
           "sha256": "02474c24daef5351ee922150a599d5cd5b09f5fc8e79978a8f5d632184f33e75"
+        }
+      ]
+    },
+    "03-maup": {
+      "source_rmd": {
+        "path": "analysis/handson/03-maup.Rmd",
+        "sha256": "f1cfcb5925067f36d41be1eb8ced73970224dd56aaa25a87862031345249526c"
+      },
+      "output_md": {
+        "path": "docs/handson/03-maup.md",
+        "sha256": "11a8d15003c6d4b63d35e3c838573725afda8eb495aaf2322159a7d3d83b9b8c"
+      },
+      "distributed_rmd": {
+        "path": "docs/handson/rmd/03-maup.Rmd",
+        "sha256": "f1cfcb5925067f36d41be1eb8ced73970224dd56aaa25a87862031345249526c"
+      },
+      "data_inputs": [
+        {
+          "path": "data/geo/adjacency_iryoken2.csv",
+          "sha256": "0612c0527339b0c3d19c751b7b24d8b0df829e2e48a7dfd0e3f930e290c47618"
+        },
+        {
+          "path": "data/geo/adjacency_prefecture.csv",
+          "sha256": "7e2956bf9e4f2cd15b12282ff235e31e072baa1f0038b8425f85c94e90417568"
+        },
+        {
+          "path": "data/geo/iryoken2.geojson",
+          "sha256": "8f8b5184626c8ae73536e866e6207a4376f2846eba53effbfabbb43f5bf5f27e"
+        },
+        {
+          "path": "data/geo/prefecture.geojson",
+          "sha256": "582cb08c70ddda86d9d0248728bb07fa0fe5bbadfc9e66580f56237a8bd3b073"
+        },
+        {
+          "path": "data/processed/specialists_iryoken2.csv",
+          "sha256": "794f304c39a744712b8a93baddce2a7e4b4ea50581322e4ba65d54f9282b6eb9"
+        },
+        {
+          "path": "data/processed/specialists_prefecture.csv",
+          "sha256": "fd5b9c24680b26ec1ae047e0328322e7e05f3331acca44b13b468dc72f1d8770"
+        },
+        {
+          "path": "data/processed/population_iryoken2.csv",
+          "sha256": "25cb5a4b39d29ae1de8029ce340abf47d7b9562f9035a5b822717f78a932fced"
+        },
+        {
+          "path": "data/processed/population_prefecture.csv",
+          "sha256": "f51345db364ec7618f16d81e6fdc36c076f0ca08ef5d9aaa06a9c49371538eae"
+        }
+      ],
+      "figures": [
+        {
+          "path": "docs/handson/figures/03-maup-map-gi-iryoken2-1.png",
+          "sha256": "584d2867d656df7b89e462a7e586aa55156c5404c4466b320126370c78944e51"
+        },
+        {
+          "path": "docs/handson/figures/03-maup-map-gi-pref-1.png",
+          "sha256": "15f1237f95be34c0f3d67035c9658ec8ffee7823e8b68e518dd5800f6cf130b8"
+        },
+        {
+          "path": "docs/handson/figures/03-maup-map-iryoken2-rate-1.png",
+          "sha256": "76e58a30ba16411e86c61d051a63959247be7335432b2db4e8742d24eae73e89"
+        },
+        {
+          "path": "docs/handson/figures/03-maup-map-pref-rate-1.png",
+          "sha256": "d076bd94382fa586686c7413fbb6b755318d56e66bd0dcabea3f7cc3d7aa2b64"
         }
       ]
     }

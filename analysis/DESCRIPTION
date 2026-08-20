@@ -13,8 +13,11 @@ Description:
     systemfonts::system_fonts() を直接呼ぶ。いずれも rmarkdown / ragg 等の推移的依存として
     既にライブラリにはあったが、直接呼ぶので明示した)。issue #18 で
     analysis/handson/01-map-moran-lisa-gi.Rmd(地図・Global Moran's I・LISA・Gi*)を
-    書いたことに伴い spdep を追加した。issue #19〜#20 で CAR/BYM・MAUP・ケーススタディを
-    書く際に、sf・spatialreg・CARBayes 等をさらに追加する想定。License フィールドは
+    書いたことに伴い spdep を追加した。issue #20 で
+    analysis/handson/03-maup.Rmd(MAUPの実演。都道府県境界・二次医療圏境界の
+    ポリゴンを地図に描き、重心から距離閾値・k近傍の隣接を組み立てる)を書いた
+    ことに伴い sf を追加した。issue #19 で CAR/BYM を書く際に、spatialreg・
+    CARBayes 等をさらに追加する想定。License フィールドは
     意図的に省いてある。リポジトリのライセンスは未決定のため(CLAUDE.md
     「未決定事項(実装前にユーザーに確認する)」の1番目。CC BY 4.0 が候補)、決まり
     次第記入する。
@@ -28,4 +31,5 @@ Imports:
     systemfonts,
     digest,
     jsonlite,
-    spdep
+    spdep,
+    sf

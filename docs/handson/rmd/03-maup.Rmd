@@ -1,3 +1,40 @@
+---
+title: "ハンズオン③: MAUPの実演 — 都道府県 vs 二次医療圏"
+data_inputs:
+  - data/geo/adjacency_iryoken2.csv
+  - data/geo/adjacency_prefecture.csv
+  - data/geo/iryoken2.geojson
+  - data/geo/prefecture.geojson
+  - data/processed/specialists_iryoken2.csv
+  - data/processed/specialists_prefecture.csv
+  - data/processed/population_iryoken2.csv
+  - data/processed/population_prefecture.csv
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+
+# パッケージ読み込み時の付帯メッセージ(次のパッケージを付け加えます、等)を
+# 公開ページに出さない。
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+
+# ragg (dev = "ragg_png") と組み合わせて日本語が豆腐(□)にならないよう、
+# OS 標準搭載の日本語フォントを既定にする。00-setup.Rmd・01-map-moran-lisa-gi.Rmd
+# と同じ処理。
+os_name <- Sys.info()[["sysname"]]
+jp_font <- switch(os_name,
+  Windows = "Meiryo",
+  Darwin  = "Hiragino Sans",
+  "Noto Sans CJK JP"  # Linux などその他
+)
+if (!(jp_font %in% systemfonts::system_fonts()$family)) {
+  jp_font <- ""
+}
+theme_set(theme_minimal(base_family = jp_font, base_size = 13))
+
+# 図チャンクには fig.alt を付ける(fig.cap は付けない)。詳細は analysis/README.md。
+```
+
 # ハンズオン③: MAUPの実演 — 都道府県 vs 二次医療圏
 
 ## このページで行うこと
@@ -16,14 +53,14 @@
 このページで使う分子(専門医数)は1つに決め打ちせず、**3つの系列を並べて感度を確認します**。
 
 | 系列 | 中身 | 特徴 |
-|----|----|----|
+|---|---|---|
 | A: 積み上げ(主系列) | 二次医療圏レベルの分子(`n_specialists_care`、診療の場のみ)を都道府県へ集計 | 都道府県と二次医療圏で**分子が完全に同一**になる唯一の系列 |
 | B: 勤務地ベース | 同じ二次医療圏データの `n_specialists_all`(診療の場+非診療の勤務先) | 「診療の場かどうか」を数えるかどうかの感度 |
 | C: 名簿の公式集計 | 名簿PDF1ページ目の都道府県別公式集計(`n_certified`) | 二次医療圏には存在しない、都道府県のみの系列。名寄せで割り付けられなかった分を含む |
 
 **単位の比較(都道府県 vs 二次医療圏)に使えるのは系列Aだけです。** 系列Aは二次医療圏の分子をそのまま都道府県へ積み上げたものなので、「同一データを単位だけ変えて集計し直す」というMAUPの実演そのものになります。系列B・Cは分子の定義を変えたときの感度を見るための脇役で、単位の効果とは軸が別です。
 
-``` r
+```{r read-data}
 library(dplyr)
 library(spdep)
 library(sf)
@@ -59,19 +96,12 @@ adj_iryoken2 <- read.csv("data/geo/adjacency_iryoken2.csv", colClasses = "charac
 adj_pref <- read.csv("data/geo/adjacency_prefecture.csv", colClasses = "character")
 
 nrow(spec_iryoken2)
-```
-
-    ## [1] 339
-
-``` r
 nrow(pop_pref)
 ```
 
-    ## [1] 47
-
 `specialists_iryoken2.csv` には都道府県コードが無いので、`population_iryoken2.csv`(`area_code` と `pref_code` を両方持つ)を対応表として使い、系列Aを都道府県へ積み上げます。
 
-``` r
+```{r series-a-rollup}
 code_map <- pop_iryoken2 |> select(area_code, pref_code) |> distinct()
 
 spec_iryoken2 <- spec_iryoken2 |>
@@ -93,27 +123,15 @@ cat(sprintf(
   "系列A(care)の全国合計: 二次医療圏側 %d名 / 都道府県への積み上げ後 %d名(一致するはず)\n",
   sum(spec_iryoken2$n_specialists_care), sum(seriesA_pref$n_care)
 ))
-```
-
-    ## 系列A(care)の全国合計: 二次医療圏側 1626名 / 都道府県への積み上げ後 1626名(一致するはず)
-
-``` r
 cat(sprintf("系列B(all)の全国合計: %d名\n", sum(seriesA_pref$n_all)))
-```
-
-    ## 系列B(all)の全国合計: 1654名
-
-``` r
 cat(sprintf("系列C(公式集計、海外14名を除く47都道府県分): %d名\n", sum(seriesC_pref$n_certified)))
 ```
-
-    ## 系列C(公式集計、海外14名を除く47都道府県分): 1889名
 
 系列Aは積み上げ前後で人数が変わらないことをこのコード自身が確認しています。系列Cが系列A・Bより多いのは、[ハンズオン④(ケーススタディ)のデータの制約](04-case-study.md)で説明している名寄せの未割付分(施設名が公表データに見つからず座標を持てなかった専門医)が、都道府県公式集計には最初から含まれているためです。
 
 人口10万対の率(`rate_per_100k`)を都道府県・二次医療圏それぞれで計算します。この先の地図・Global Moran's I・LISA・Gi\*は、特に断らない限り**系列A(診療の場のみ、主系列)**の率を使います。
 
-``` r
+```{r rates}
 iryoken2_df <- pop_iryoken2 |>
   select(area_code, area_name, pref_code, pref_name, population_2020) |>
   left_join(
@@ -142,19 +160,11 @@ pref_df |>
   knitr::kable(digits = 2, col.names = c("都道府県", "専門医数(care)", "人口(2020)", "人口10万対"))
 ```
 
-| 都道府県 | 専門医数(care) | 人口(2020) | 人口10万対 |
-|:---------|---------------:|-----------:|-----------:|
-| 長崎県   |             64 |    1312317 |       4.88 |
-| 福岡県   |            127 |    5135214 |       2.47 |
-| 奈良県   |             30 |    1324473 |       2.27 |
-| 東京都   |            313 |   14047594 |       2.23 |
-| 宮崎県   |             21 |    1069576 |       1.96 |
-
 ## Step 1: 空間重み行列を組み立てる
 
 [章2](../concepts/ch2-spatial-weights.md)と[ハンズオン①](01-map-moran-lisa-gi.md)と同じ理由(`spdep::poly2nb()` / `spdep::mat2listw()` を呼ぶとこの環境ではRプロセスが終了時に異常終了する)で、隣接はあらかじめ計算済みのエッジ一覧CSVから組み立てます。都道府県の隣接(`data/geo/adjacency_prefecture.csv`)は本ハンズオンのために新たに作成したファイルで、`data/geo/prefecture.geojson`(47都道府県の境界)から queen contiguity(`spdep::poly2nb(..., queen = TRUE)`)で導いています(`scripts/build_adjacency_prefecture.R`。診断結果は `data/geo/adjacency_prefecture_diagnostics.md`)。二次医療圏の隣接は[ハンズオン①](01-map-moran-lisa-gi.md)や `scripts/build_geo.R` と同じ `data/geo/adjacency_iryoken2.csv` です。
 
-``` r
+```{r build-nb-function}
 # ハンズオン①(01-map-moran-lisa-gi.Rmd)と同じ関数。エッジ一覧CSVから
 # area_id -> 1..n の連番位置に変換した nb オブジェクトを直接組み立てる
 # (spdep::mat2listw() は使わない)。
@@ -178,65 +188,30 @@ build_nb <- function(ids, edges, from = "area_id", to = "neighbor_id") {
 }
 ```
 
-``` r
+```{r weights-pref}
 pref_nb <- build_nb(pref_df$pref_code, adj_pref, from = "area_code", to = "neighbor_code")
 summary(pref_nb, zero.policy = TRUE)
 ```
 
-    ## Neighbour list object:
-    ## Number of regions: 47 
-    ## Number of nonzero links: 174 
-    ## Percentage nonzero weights: 7.876867 
-    ## Average number of links: 3.702128 
-    ## 2 regions with no links:
-    ## 01, 47
-    ## 4 disjoint connected subgraphs
-    ## Link number distribution:
-    ## 
-    ##  0  1  2  3  4  5  6  7  8 
-    ##  2  1  5 12 18  3  3  2  1 
-    ## 1 least connected region:
-    ## 42 with 1 link
-    ## 1 most connected region:
-    ## 20 with 8 links
+都道府県のqueen contiguityでは、**`r paste(pref_df$pref_name[card(pref_nb) == 0], collapse = "と")`が隣接0件(孤立)**になります。いずれも海で隔てられているため地理的に妥当な結果ですが、隣が0個の地域があると `nb2listw()` の既定設定はエラーで止まります。この先すべての計算で `zero.policy = TRUE` を明示し、「隣が0件の地域はエラーにせず、空間ラグを0として扱う(局所統計はNAになる)」という扱いにします(理由は後の「隣接ゼロの地域をどう扱ったか」の節で改めてまとめます)。
 
-都道府県のqueen contiguityでは、**北海道と沖縄県が隣接0件(孤立)**になります。いずれも海で隔てられているため地理的に妥当な結果ですが、隣が0個の地域があると `nb2listw()` の既定設定はエラーで止まります。この先すべての計算で `zero.policy = TRUE` を明示し、「隣が0件の地域はエラーにせず、空間ラグを0として扱う(局所統計はNAになる)」という扱いにします(理由は後の「隣接ゼロの地域をどう扱ったか」の節で改めてまとめます)。
-
-``` r
+```{r weights-iryoken2}
 iryoken2_nb <- build_nb(iryoken2_df$area_code, adj_iryoken2, from = "area_code", to = "neighbor_code")
 summary(iryoken2_nb, zero.policy = TRUE)
 ```
 
-    ## Neighbour list object:
-    ## Number of regions: 339 
-    ## Number of nonzero links: 1558 
-    ## Percentage nonzero weights: 1.355714 
-    ## Average number of links: 4.59587 
-    ## 14 regions with no links:
-    ## 1313, 1507, 2810, 3207, 3702, 4206, 4207, 4208, 4209, 4311, 4611, 4612,
-    ## 4704, 4705
-    ## 18 disjoint connected subgraphs
-    ## Link number distribution:
-    ## 
-    ##  0  1  2  3  4  5  6  7  8  9 10 11 
-    ## 14  8 19 46 71 80 50 29 14  6  1  1 
-    ## 8 least connected regions:
-    ## 0206 1704 2411 4201 4204 4603 4701 4703 with 1 link
-    ## 1 most connected region:
-    ## 0708 with 11 links
+二次医療圏のqueen contiguityでは`r sum(card(iryoken2_nb) == 0)`区域が孤立します(いずれも離島。[ハンズオン①](01-map-moran-lisa-gi.md)・`data/geo/README.md` で確認済み)。都道府県`r sum(card(pref_nb) == 0)`件・二次医療圏`r sum(card(iryoken2_nb) == 0)`件という孤立の数そのものが、地域単位を細かくするほど「境界を共有する隣が1つも無い」区域が増えることを表しています。
 
-二次医療圏のqueen contiguityでは14区域が孤立します(いずれも離島。[ハンズオン①](01-map-moran-lisa-gi.md)・`data/geo/README.md` で確認済み)。都道府県2件・二次医療圏14件という孤立の数そのものが、地域単位を細かくするほど「境界を共有する隣が1つも無い」区域が増えることを表しています。
-
-``` r
+```{r weights-listw}
 pref_listw <- nb2listw(pref_nb, style = "W", zero.policy = TRUE)
 iryoken2_listw <- nb2listw(iryoken2_nb, style = "W", zero.policy = TRUE)
 ```
 
 ## Step 2: 同じ分子(系列A)を単位だけ変えて地図にする
 
-都道府県(47)と二次医療圏(339)、それぞれの境界データ(`data/geo/prefecture.geojson` / `data/geo/iryoken2.geojson`)に系列Aの人口10万対専門医数(`rate_care`)を結合し、地図にします。**単位を変えたことによる見た目の違いだけを見せるため、色の基準(`limits`)を2枚の地図で共通にします。**
+都道府県(`r nrow(pref_df)`)と二次医療圏(`r nrow(iryoken2_df)`)、それぞれの境界データ(`data/geo/prefecture.geojson` / `data/geo/iryoken2.geojson`)に系列Aの人口10万対専門医数(`rate_care`)を結合し、地図にします。**単位を変えたことによる見た目の違いだけを見せるため、色の基準(`limits`)を2枚の地図で共通にします。**
 
-``` r
+```{r map-data-join}
 pref_sf <- st_read("data/geo/prefecture.geojson", quiet = TRUE)
 pref_sf$pref_code <- as.character(pref_sf$pref_code)
 pref_map <- pref_sf |> left_join(pref_df |> select(pref_code, rate_care), by = "pref_code")
@@ -248,11 +223,7 @@ iryoken2_map <- iryoken2_sf |> left_join(iryoken2_df |> select(area_code, rate_c
 # 2枚の地図で共通に使う色の基準(0 〜 両方の最大値)。
 rate_care_limits <- c(0, max(c(pref_df$rate_care, iryoken2_df$rate_care), na.rm = TRUE))
 rate_care_limits
-```
 
-    ## [1] 0.000000 9.706095
-
-``` r
 # alt textが「どこが濃いか」として挙げる地域名も、目視ではなく率の順位から作る
 # (地域名を alt text に直接書くと、データが動いたときに図と説明が食い違っても
 # 画面上は何も起きず、読み上げ環境の読者にだけ誤った説明が届く)。
@@ -264,7 +235,7 @@ areas_in <- function(pref) {
 }
 ```
 
-``` r
+```{r map-pref-rate, fig.alt=sprintf("%d都道府県の人口10万対専門医数(系列A・診療の場のみ)の地図。%sが最も濃く、%sも比較的濃い(ただし率の高さとGi*のhot spot判定は一致するとは限らない。詳しくはStep 4)。色の基準は次の二次医療圏の地図と共通(0〜約%.1f)にしてあるため、二次医療圏の地図に比べると全体に薄く、色の差も小さく見える。", nrow(pref_df), pref_by_rate$pref_name[1], paste(pref_by_rate$pref_name[2:4], collapse = "・"), rate_care_limits[2]), fig.width=6.5, fig.height=6}
 ggplot(pref_map) +
   geom_sf(aes(fill = rate_care), color = "white", linewidth = 0.2) +
   scale_fill_gradient(low = "#a8c7e8", high = "#08306b", limits = rate_care_limits) +
@@ -272,9 +243,7 @@ ggplot(pref_map) +
   labs(title = "都道府県別 人口10万対専門医数(系列A)", fill = "人口10万対\n専門医数")
 ```
 
-![47都道府県の人口10万対専門医数(系列A・診療の場のみ)の地図。長崎県が最も濃く、福岡県・奈良県・東京都も比較的濃い(ただし率の高さとGi*のhot spot判定は一致するとは限らない。詳しくはStep 4)。色の基準は次の二次医療圏の地図と共通(0〜約9.7)にしてあるため、二次医療圏の地図に比べると全体に薄く、色の差も小さく見える。](figures/03-maup-map-pref-rate-1.png)
-
-``` r
+```{r map-iryoken2-rate, fig.alt=sprintf("%d二次医療圏の人口10万対専門医数(系列A・診療の場のみ)の地図。色の基準は上の都道府県地図と共通(0〜約%.1f)。%s内(%sなど)が最も濃く、都道府県地図では%sという1色に均されていた濃淡が、複数の医療圏にまたがる濃淡の差として見える。%s内も%sなど濃い医療圏と0人の離島医療圏が混在しており、都道府県地図の単一の色には現れない内部のばらつきがある。", nrow(iryoken2_df), rate_care_limits[2], top_iryoken2_pref, areas_in(top_iryoken2_pref), top_iryoken2_pref, pref_by_rate$pref_name[1], areas_in(pref_by_rate$pref_name[1])), fig.width=6.5, fig.height=6}
 ggplot(iryoken2_map) +
   geom_sf(aes(fill = rate_care), color = "white", linewidth = 0.05) +
   scale_fill_gradient(low = "#a8c7e8", high = "#08306b", limits = rate_care_limits) +
@@ -282,15 +251,13 @@ ggplot(iryoken2_map) +
   labs(title = "二次医療圏別 人口10万対専門医数(系列A)", fill = "人口10万対\n専門医数")
 ```
 
-![339二次医療圏の人口10万対専門医数(系列A・診療の場のみ)の地図。色の基準は上の都道府県地図と共通(0〜約9.7)。東京都内(区中央部・区西部など)が最も濃く、都道府県地図では東京都という1色に均されていた濃淡が、複数の医療圏にまたがる濃淡の差として見える。長崎県内も長崎・県央など濃い医療圏と0人の離島医療圏が混在しており、都道府県地図の単一の色には現れない内部のばらつきがある。](figures/03-maup-map-iryoken2-rate-1.png)
-
-2枚の地図を色の基準を揃えて比べると、**都道府県地図のほうが全体に薄く見えます**。二次医療圏の最大値(9.7、東京都区中央部)が都道府県の最大値(4.9、長崎県)より大きいため、共通の色の基準では都道府県側の濃淡の差が圧縮されます。これは章6でいう scale effect そのものです——**細かい単位で存在する極端な値は、粗い単位に集約すると周囲の値と混ざって平均化され、地図上の見た目の差が小さくなります。**
+2枚の地図を色の基準を揃えて比べると、**都道府県地図のほうが全体に薄く見えます**。二次医療圏の最大値(`r round(max(iryoken2_df$rate_care, na.rm = TRUE), 1)`、`r iryoken2_df$pref_name[which.max(iryoken2_df$rate_care)]``r iryoken2_df$area_name[which.max(iryoken2_df$rate_care)]`)が都道府県の最大値(`r round(max(pref_df$rate_care, na.rm = TRUE), 1)`、`r pref_df$pref_name[which.max(pref_df$rate_care)]`)より大きいため、共通の色の基準では都道府県側の濃淡の差が圧縮されます。これは章6でいう scale effect そのものです——**細かい単位で存在する極端な値は、粗い単位に集約すると周囲の値と混ざって平均化され、地図上の見た目の差が小さくなります。**
 
 ## Step 3: Global Moran's I を単位ごとに比較する(系列A・B・C、queen)
 
 まず空間重み行列を queen contiguity に固定し、単位(都道府県・二次医療圏)と分子系列(A・B・C)を変えたときにGlobal Moran's Iがどう変わるかを見ます。
 
-``` r
+```{r global-moran-table}
 run_moran <- function(x, listw) {
   mt <- moran.test(x, listw, zero.policy = TRUE, randomisation = TRUE)
   c(I = unname(mt$estimate[["Moran I statistic"]]), p_value = mt$p.value)
@@ -325,17 +292,9 @@ moran_table |>
   knitr::kable(digits = c(NA, NA, 4, 4), col.names = c("単位", "分子系列", "Moran's I", "p値(moran.test)"))
 ```
 
-| 単位            | 分子系列             | Moran's I | p値(moran.test) |
-|:----------------|:---------------------|----------:|----------------:|
-| 都道府県(47)    | A: 積み上げ(care)    |    0.1674 |          0.0194 |
-| 都道府県(47)    | B: 勤務地ベース(all) |    0.1594 |          0.0248 |
-| 都道府県(47)    | C: 公式集計          |    0.1847 |          0.0104 |
-| 二次医療圏(339) | A: 積み上げ(care)    |    0.1509 |          0.0000 |
-| 二次医療圏(339) | B: 勤務地ベース(all) |    0.1577 |          0.0000 |
-
 `moran.test()` は無作為抽出時の期待値との漸近的な検定です。permutation test(`moran.mc()`)でも同じ結論になることを、系列A・queenの組み合わせで確認しておきます。
 
-``` r
+```{r global-moran-mc}
 set.seed(20260819)
 mc_pref <- moran.mc(pref_df$rate_care, pref_listw, nsim = 999, zero.policy = TRUE)
 set.seed(20260819)
@@ -345,26 +304,19 @@ cat(sprintf(
   "都道府県(系列A): moran.mc() 疑似p値 = %.4f(999回のシャッフル)\n",
   mc_pref$p.value
 ))
-```
-
-    ## 都道府県(系列A): moran.mc() 疑似p値 = 0.0320(999回のシャッフル)
-
-``` r
 cat(sprintf(
   "二次医療圏(系列A): moran.mc() 疑似p値 = %.4f(999回のシャッフル)\n",
   mc_iryoken2$p.value
 ))
 ```
 
-    ## 二次医療圏(系列A): moran.mc() 疑似p値 = 0.0010(999回のシャッフル)
-
-**このテーブルだけを見ると、MAUPは大きな問題に見えないかもしれません。** 系列A・B・Cのいずれでも、都道府県・二次医療圏のどちらの単位でもGlobal Moran's Iは0.15〜0.18程度の正の値で、`moran.test()` のp値もmoran.mcの疑似p値もすべて0.05を下回ります。**「地図全体として緩やかな正の空間的自己相関がある」という結論そのものは、単位を変えても分子の定義を変えてもひっくり返りません。** ただし都道府県のp値(0.0194)は二次医療圏のp値(1.38e-05)よりずっと大きく、地域数が47まで減ると検出力が下がることが分かります。**MAUPの効果が本当に効いてくるのは、この先のLISA・Gi\*という「どこが集まっているか」を地域単位で見る段階です。**
+**このテーブルだけを見ると、MAUPは大きな問題に見えないかもしれません。** 系列A・B・Cのいずれでも、都道府県・二次医療圏のどちらの単位でもGlobal Moran's Iは`r round(min(moran_table$I), 2)`〜`r round(max(moran_table$I), 2)`程度の正の値で、`moran.test()` のp値もmoran.mcの疑似p値もすべて0.05を下回ります。**「地図全体として緩やかな正の空間的自己相関がある」という結論そのものは、単位を変えても分子の定義を変えてもひっくり返りません。** ただし都道府県のp値(`r formatC(moran_pref_A[["p_value"]], format = "g", digits = 3)`)は二次医療圏のp値(`r formatC(moran_iryoken2_A[["p_value"]], format = "g", digits = 3)`)よりずっと大きく、地域数が`r nrow(pref_df)`まで減ると検出力が下がることが分かります。**MAUPの効果が本当に効いてくるのは、この先のLISA・Gi\*という「どこが集まっているか」を地域単位で見る段階です。**
 
 ## Step 4: LISA / Gi\* を単位ごとに比較する — 東京都と長崎県の対比
 
 系列A・queen contiguityで、都道府県レベルのLISAとGi\*を計算します。
 
-``` r
+```{r lisa-gi-pref}
 lm_pref <- localmoran(pref_df$rate_care, pref_listw, zero.policy = TRUE)
 pref_listw_incl_self <- nb2listw(include.self(pref_nb), style = "B", zero.policy = TRUE)
 gi_pref <- localG(pref_df$rate_care, pref_listw_incl_self, zero.policy = TRUE)
@@ -407,36 +359,20 @@ pref_lisa_gi |>
   knitr::kable(digits = 3, col.names = c("都道府県", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
-| 都道府県 |    率 | LISA分類  | 局所p値 | Gi\* z値 |
-|:---------|------:|:----------|--------:|---------:|
-| 長崎県   | 4.877 | High-High |   0.260 |    4.058 |
-| 福岡県   | 2.473 | High-High |   0.604 |    1.262 |
-| 奈良県   | 2.265 | High-High |   0.611 |    1.054 |
-| 東京都   | 2.228 | High-Low  |   0.281 |   -0.387 |
-| 宮崎県   | 1.963 | High-High |   0.956 |    0.428 |
-| 京都府   | 1.823 | High-High |   0.965 |    0.321 |
-| 佐賀県   | 1.725 | High-High |   0.000 |    4.349 |
-| 岡山県   | 1.589 | High-Low  |   0.596 |   -0.284 |
+率が最も高いのは長崎県(`r round(pref_lisa_gi$rate_care[pref_lisa_gi$pref_name == "長崎県"], 2)`)ですが、**率で`r pref_lisa_gi$rank_care[pref_lisa_gi$pref_name == "東京都"]`位の東京都(`r round(pref_lisa_gi$rate_care[pref_lisa_gi$pref_name == "東京都"], 2)`)は、LISA分類が`r pref_lisa_gi$quadrant[pref_lisa_gi$pref_name == "東京都"]`(空間的アウトライヤー)、Gi\* z値も`r round(pref_lisa_gi$gi_z[pref_lisa_gi$pref_name == "東京都"], 3)`とhot spot閾値1.96を大きく下回ります。** 東京都に隣接する埼玉県・千葉県・神奈川県の率が東京都ほど高くないため、[ハンズオン①](01-map-moran-lisa-gi.md)のB市(架空10市町村)と同じ理由で、周囲が低い単独の高値として扱われます。
 
-率が最も高いのは長崎県(4.88)ですが、**率で4位の東京都(2.23)は、LISA分類がHigh-Low(空間的アウトライヤー)、Gi\* z値も-0.387とhot spot閾値1.96を大きく下回ります。** 東京都に隣接する埼玉県・千葉県・神奈川県の率が東京都ほど高くないため、[ハンズオン①](01-map-moran-lisa-gi.md)のB市(架空10市町村)と同じ理由で、周囲が低い単独の高値として扱われます。
+対照的に、**長崎県は`r pref_lisa_gi$quadrant[pref_lisa_gi$pref_name == "長崎県"]`、Gi\* z値`r round(pref_lisa_gi$gi_z[pref_lisa_gi$pref_name == "長崎県"], 3)`で、都道府県レベルでもhot spot閾値を超えます。** `r nagasaki_neighbor_text`
 
-対照的に、**長崎県はHigh-High、Gi\* z値4.058で、都道府県レベルでもhot spot閾値を超えます。** 隣接する佐賀県も同様です。
-
-``` r
+```{r pref-hotspots}
 pref_hotspots <- pref_lisa_gi |> filter(gi_z > 1.96)
 pref_hotspots |>
   select(pref_name, rate_care, gi_z) |>
   knitr::kable(digits = 3, col.names = c("都道府県", "率", "Gi* z値"))
 ```
 
-| 都道府県 |    率 | Gi\* z値 |
-|:---------|------:|---------:|
-| 佐賀県   | 1.725 |    4.349 |
-| 長崎県   | 4.877 |    4.058 |
+都道府県レベルでGi\*がhot spotとして検出するのは、この`r nrow(pref_hotspots)`県(`r paste(pref_hotspots$pref_name, collapse = "・")`)だけです。ここで疑問が生まれます——**「都道府県レベルでは目立たない東京都」は、二次医療圏まで単位を細かくしても本当に目立たないままなのでしょうか。** 「都道府県レベルでhot spotになった県」と「ならなかった東京都」を、それぞれ二次医療圏に割ったときの中身を見て確認します。
 
-都道府県レベルでGi\*がhot spotとして検出するのは、この2県(佐賀県・長崎県)だけです。ここで疑問が生まれます——**「都道府県レベルでは目立たない東京都」は、二次医療圏まで単位を細かくしても本当に目立たないままなのでしょうか。** 「都道府県レベルでhot spotになった県」と「ならなかった東京都」を、それぞれ二次医療圏に割ったときの中身を見て確認します。
-
-``` r
+```{r lisa-gi-iryoken2}
 lm_iryoken2 <- localmoran(iryoken2_df$rate_care, iryoken2_listw, zero.policy = TRUE)
 iryoken2_listw_incl_self <- nb2listw(include.self(iryoken2_nb), style = "B", zero.policy = TRUE)
 gi_iryoken2 <- localG(iryoken2_df$rate_care, iryoken2_listw_incl_self, zero.policy = TRUE)
@@ -454,7 +390,7 @@ iryoken2_lisa_gi <- iryoken2_df |>
 
 まず長崎県(都道府県レベルでhot spot)の内訳です。
 
-``` r
+```{r nagasaki-breakdown}
 nagasaki <- iryoken2_lisa_gi |>
   filter(pref_name == "長崎県") |>
   arrange(desc(gi_z))
@@ -464,18 +400,7 @@ nagasaki |>
   knitr::kable(digits = 3, col.names = c("二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
-| 二次医療圏 |    率 | LISA分類  | 局所p値 | Gi\* z値 |
-|:-----------|------:|:----------|--------:|---------:|
-| 長崎       | 8.111 | High-High |   0.012 |    5.854 |
-| 県央       | 3.779 | High-High |   0.000 |    4.188 |
-| 県南       | 2.367 | High-High |   0.018 |    2.515 |
-| 佐世保県北 | 2.924 | High-High |   0.250 |    1.890 |
-| 五島       | 2.908 | NA        |     NaN |       NA |
-| 上五島     | 0.000 | NA        |     NaN |       NA |
-| 壱岐       | 0.000 | NA        |     NaN |       NA |
-| 対馬       | 0.000 | NA        |     NaN |       NA |
-
-``` r
+```{r nagasaki-counts}
 # 本文が名前を挙げる医療圏は、ハードコードせずこの分類から引く(データが動いた
 # ときに本文と上の表が静かに食い違わないように)。並び順は表と同じ。
 nagasaki_hh <- nagasaki |> filter(quadrant == "High-High")
@@ -488,21 +413,14 @@ stopifnot(nrow(nagasaki_iso_nonzero) == 1)
 # 「県内でも中位」という位置づけもハードコードせず、県内順位として出す。
 nagasaki_iso_rank <- sum(nagasaki$rate_care > nagasaki_iso_nonzero$rate_care) + 1
 nrow(nagasaki_hh)
-```
-
-    ## [1] 4
-
-``` r
 sum(nagasaki$gi_z > 1.96, na.rm = TRUE)
 ```
 
-    ## [1] 3
-
-長崎県内では、長崎・県央・県南・佐世保県北の4医療圏がHigh-Highに分類され、うち3医療圏がGi\*でもhot spot閾値を超えます。残る**五島・上五島・壱岐・対馬の4医療圏は隣接0件のため、LISA分類・Gi\*とも計算が成立せずNAになります**。上五島・壱岐・対馬は率も0ですが、**五島は率2.91と長崎県内8医療圏中4位の値でありながら、隣が1つも無いというだけの理由でLISA・Gi\*とも分類できません**——孤立地域の扱いが「率が低いから」ではなく「隣接の定義上たまたま孤立しているから」という、率の高低とは別の理由で効くことの一例です。**都道府県レベルの「長崎県はhot spot」という結論は、二次医療圏まで割っても崩れません** — 内部の主要医療圏がそろって高い値を示しているため、粗い単位でも細かい単位でも同じ結論になります。
+長崎県内では、`r paste(nagasaki_hh$area_name, collapse = "・")`の`r nrow(nagasaki_hh)`医療圏がHigh-Highに分類され、うち`r sum(nagasaki$gi_z > 1.96, na.rm = TRUE)`医療圏がGi\*でもhot spot閾値を超えます。残る**`r paste(nagasaki_iso$area_name, collapse = "・")`の`r nrow(nagasaki_iso)`医療圏は隣接0件のため、LISA分類・Gi\*とも計算が成立せずNAになります**。`r paste(nagasaki_iso_zero$area_name, collapse = "・")`は率も0ですが、**`r nagasaki_iso_nonzero$area_name`は率`r round(nagasaki_iso_nonzero$rate_care, 2)`と長崎県内`r nrow(nagasaki)`医療圏中`r nagasaki_iso_rank`位の値でありながら、隣が1つも無いというだけの理由でLISA・Gi\*とも分類できません**——孤立地域の扱いが「率が低いから」ではなく「隣接の定義上たまたま孤立しているから」という、率の高低とは別の理由で効くことの一例です。**都道府県レベルの「長崎県はhot spot」という結論は、二次医療圏まで割っても崩れません** — 内部の主要医療圏がそろって高い値を示しているため、粗い単位でも細かい単位でも同じ結論になります。
 
 次に東京都(都道府県レベルではhot spotでなかった)の内訳です。
 
-``` r
+```{r tokyo-breakdown}
 tokyo <- iryoken2_lisa_gi |>
   filter(pref_name == "東京都") |>
   arrange(desc(gi_z))
@@ -512,23 +430,7 @@ tokyo |>
   knitr::kable(digits = 3, col.names = c("二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
-| 二次医療圏 |    率 | LISA分類  | 局所p値 | Gi\* z値 |
-|:-----------|------:|:----------|--------:|---------:|
-| 区西部     | 5.368 | High-High |   0.000 |    5.644 |
-| 区西南部   | 1.694 | High-High |   0.000 |    5.629 |
-| 区中央部   | 9.706 | High-High |   0.007 |    5.000 |
-| 区南部     | 2.136 | High-High |   0.000 |    4.490 |
-| 区西北部   | 1.555 | High-High |   0.000 |    4.160 |
-| 区東部     | 1.071 | High-High |   0.000 |    3.314 |
-| 区東北部   | 0.806 | Low-High  |   0.003 |    2.711 |
-| 北多摩南部 | 1.507 | High-High |   0.027 |    2.246 |
-| 北多摩北部 | 1.735 | High-High |   0.719 |    0.604 |
-| 北多摩西部 | 0.607 | Low-High  |   0.639 |    0.329 |
-| 南多摩     | 0.625 | Low-High  |   0.889 |    0.049 |
-| 西多摩     | 0.528 | Low-Low   |   0.567 |   -0.648 |
-| 島しょ     | 0.000 | NA        |     NaN |       NA |
-
-``` r
+```{r tokyo-hotspot-count}
 # LISAのHigh-HighとGi*のz>1.96は別の指標が答える別の問いであり、同じ集合とは
 # 限らない(下の本文参照)。それぞれ独立に集計してから件数を比較する。
 tokyo_highhigh <- tokyo |> filter(quadrant == "High-High")
@@ -562,25 +464,18 @@ hh_not_gi_row <- hh_not_gi[1, ]
 gi_not_hh_note <- if (gi_not_hh_row$quadrant %in% c("Low-High", "High-Low")) "(空間的アウトライヤー)" else ""
 
 nrow(tokyo_highhigh)
-```
-
-    ## [1] 8
-
-``` r
 nrow(tokyo_gi_hotspots)
 ```
 
-    ## [1] 8
-
-**ここが今回の山場です。** 都道府県レベルでは空間的アウトライヤー(hot spotではない)と分類された東京都の内部を見ると、区中央部・区西部・区南部など都心部の複数の医療圏で高い値が観測されます。ただし**Gi\*とLISAは同じ集合を指しているわけではありません**——LISAでHigh-Highに分類されるのは8医療圏、Gi\* z値が1.96を超えるのも件数としては同じ8医療圏ですが、これは偶然の一致で中身は異なります。区東北部はLISA分類がLow-High(空間的アウトライヤー)であるにもかかわらずGi\* z値は2.711でhot spot閾値(1.96)を超え、逆に北多摩北部はHigh-Highに分類されながらGi\* z値は0.604にとどまり閾値を超えません。**「値が高い(自分と周囲がそろってHigh-High)」ことと「Gi\*でhot spotと判定される」ことは、別の問いに対する別の答えです。** それでもGi\*でhot spotと判定された8医療圏はいずれも都心部に集まっており、z値の最大は区西部のz = 5.64です。**都道府県という単位では「東京都1件」として埼玉県・千葉県・神奈川県という比較的率の低い隣県と平均され、周囲より浮いた単独の高値に見えていましたが、二次医療圏まで単位を細かくすると、都心部の複数の医療圏がGi\*でもhot spotとして検出されることが分かります。**
+**ここが今回の山場です。** 都道府県レベルでは空間的アウトライヤー(hot spotではない)と分類された東京都の内部を見ると、`r paste(head(arrange(tokyo, desc(rate_care))$area_name, 3), collapse = "・")`など都心部の複数の医療圏で高い値が観測されます。ただし**Gi\*とLISAは同じ集合を指しているわけではありません**——LISAでHigh-Highに分類されるのは`r nrow(tokyo_highhigh)`医療圏、`r tokyo_count_text`。`r gi_not_hh_row$area_name`はLISA分類が`r gi_not_hh_row$quadrant``r gi_not_hh_note`であるにもかかわらずGi\* z値は`r round(gi_not_hh_row$gi_z, 3)`でhot spot閾値(1.96)を超え、逆に`r hh_not_gi_row$area_name`はHigh-Highに分類されながらGi\* z値は`r round(hh_not_gi_row$gi_z, 3)`にとどまり閾値を超えません。**「値が高い(自分と周囲がそろってHigh-High)」ことと「Gi\*でhot spotと判定される」ことは、別の問いに対する別の答えです。** それでもGi\*でhot spotと判定された`r nrow(tokyo_gi_hotspots)`医療圏はいずれも都心部に集まっており、z値の最大は`r tokyo$area_name[1]`のz = `r round(tokyo$gi_z[1], 2)`です。**都道府県という単位では「東京都1件」として埼玉県・千葉県・神奈川県という比較的率の低い隣県と平均され、周囲より浮いた単独の高値に見えていましたが、二次医療圏まで単位を細かくすると、都心部の複数の医療圏がGi\*でもhot spotとして検出されることが分かります。**
 
 これがMAUPの scale effect の核心です。**同じ場所・同じデータでも、集計の粗さを変えるだけで「hot spotである/ない」という結論そのものが入れ替わります。** しかも東京都の場合、この先のStep 6で確認する分子系列の感度チェックでもこの分類は揺らぎません——**東京都が都道府県レベルでhot spotにならないのは、分子の定義(care/all/official)のせいではなく、単位の粗さそのものが原因です。**
 
 ### 地図で確認する: 都道府県 vs 二次医療圏のGi\* z値
 
-ここまで表で見てきたGi\*の検出結果を、Step 2の率の地図と同じ考え方(2枚で色の基準を揃える)で地図にします。連続量のまま塗るとhot spot閾値(1.96)がどこにあるか読み取りにくいため、**「hot spot(z \> 1.96)」「非有意」「cold spot(z \< -1.96)」「孤立(NA)」の4区分**に離散化します。都道府県・二次医療圏のどちらにも `cold spot` に該当する区域が1件も無かったため(次の地図で確認します)、2枚とも凡例には3区分(hot spot・非有意・孤立(NA))しか出ません——これは描画漏れではなく、**「集中して低い地域は無かった」という結果そのもの**です。色の対応(`gi_cat_colors`)は固定した名前付きベクトルで2枚共通にしてあるので、同じラベルは必ず同じ色になります。
+ここまで表で見てきたGi\*の検出結果を、Step 2の率の地図と同じ考え方(2枚で色の基準を揃える)で地図にします。連続量のまま塗るとhot spot閾値(1.96)がどこにあるか読み取りにくいため、**「hot spot(z > 1.96)」「非有意」「cold spot(z < -1.96)」「孤立(NA)」の4区分**に離散化します。都道府県・二次医療圏のどちらにも `cold spot` に該当する区域が1件も無かったため(次の地図で確認します)、2枚とも凡例には3区分(hot spot・非有意・孤立(NA))しか出ません——これは描画漏れではなく、**「集中して低い地域は無かった」という結果そのもの**です。色の対応(`gi_cat_colors`)は固定した名前付きベクトルで2枚共通にしてあるので、同じラベルは必ず同じ色になります。
 
-``` r
+```{r gi-map-data}
 # 凡例のラベルは短く保つ(「Cold spot(z < -1.96)」のように長いラベルを使うと
 # 凡例がキャンバスの横幅を大きく取り、coord_sf()がアスペクト比を保とうとする
 # 結果パネルの縦横とも縮んでしまう。閾値の説明は本文と凡例タイトルで行い、
@@ -624,11 +519,7 @@ cat(sprintf(
   sum(pref_gi_map$gi_cat == "cold spot", na.rm = TRUE),
   sum(iryoken2_gi_map$gi_cat == "cold spot", na.rm = TRUE)
 ))
-```
 
-    ## cold spotの件数: 都道府県 0件 / 二次医療圏 0件
-
-``` r
 # hot spot・非有意・孤立(NA)の件数も同様にコード側で確定させる(alt textと
 # 本文の件数をハードコードせず、この出力から inline R で参照するため)。
 n_hot_pref <- sum(pref_gi_map$gi_cat == "hot spot", na.rm = TRUE)
@@ -675,11 +566,9 @@ cat(sprintf(
 ))
 ```
 
-    ## hot spot/非有意/孤立(NA)の内訳: 都道府県 2/43/2件(計47) / 二次医療圏 21/304/14件(計339)
-
 `scale_fill_manual()` に `drop = FALSE` は付けません。**都道府県・二次医療圏のどちらにも `cold spot` に該当する区域が1件も無い**ため(上のコード出力の通り)、既定の(未使用の水準を凡例から落とす)挙動のまま使うと、2枚とも自然に同じ3区分(hot spot・非有意・孤立(NA))の凡例になります。`drop = FALSE` で無理に4区分目を出すと、値が1件も無い区分の凡例キーだけ塗りが描かれない(白抜きのまま浮く)不具合が実際に起きたため、この描き方はやめました。色の対応(`gi_cat_colors`)は名前付きベクトルで固定してあるので、2枚の凡例で同じラベルは必ず同じ色になります。
 
-``` r
+```{r map-gi-pref, fig.alt=sprintf("%d都道府県のGi* z値をhot spot・非有意・孤立(NA)の3区分で塗った地図(cold spotは0件のため凡例に出ない)。赤(hot spot)は%sの%d県だけで、%d都道府県は非有意(グレー)。%sの%d都道府県は隣接0件のため孤立(NA、濃いグレー)。", nrow(pref_df), hot_pref_names, n_hot_pref, n_nonsig_pref, isolated_pref_names, n_isolated_pref), fig.width=6.5, fig.height=6}
 ggplot(pref_gi_map) +
   geom_sf(aes(fill = gi_cat), color = "white", linewidth = 0.2) +
   scale_fill_manual(values = gi_cat_colors, name = "Gi*の区分") +
@@ -688,9 +577,7 @@ ggplot(pref_gi_map) +
   labs(title = "都道府県別 Gi* z値の区分(系列A)")
 ```
 
-![47都道府県のGi* z値をhot spot・非有意・孤立(NA)の3区分で塗った地図(cold spotは0件のため凡例に出ない)。赤(hot spot)は佐賀県・長崎県の2県だけで、43都道府県は非有意(グレー)。北海道・沖縄県の2都道府県は隣接0件のため孤立(NA、濃いグレー)。](figures/03-maup-map-gi-pref-1.png)
-
-``` r
+```{r map-gi-iryoken2, fig.alt=sprintf("%d二次医療圏のGi* z値を上と同じ3区分・同じ配色で塗った地図(cold spotは0件のため凡例に出ない)。赤(hot spot)は%s、あわせて%d医療圏に散らばる。都道府県地図では非有意だった%sの一部医療圏もここでは赤くなる。離島など隣接0件の%d区域は孤立(NA)。", nrow(iryoken2_df), hot_iryoken2_areas_text, n_hot_iryoken2, newly_hot_pref_text, n_isolated_iryoken2), fig.width=6.5, fig.height=6}
 ggplot(iryoken2_gi_map) +
   geom_sf(aes(fill = gi_cat), color = "white", linewidth = 0.05) +
   scale_fill_manual(values = gi_cat_colors, name = "Gi*の区分") +
@@ -699,15 +586,13 @@ ggplot(iryoken2_gi_map) +
   labs(title = "二次医療圏別 Gi* z値の区分(系列A)")
 ```
 
-![339二次医療圏のGi* z値を上と同じ3区分・同じ配色で塗った地図(cold spotは0件のため凡例に出ない)。赤(hot spot)は長崎県内(長崎・県央・県南)、東京都内(区西部・区西南部・区中央部など)、福岡県内(筑紫・朝倉・久留米)、佐賀県内(東部・中部)、千葉県内(安房・君津・山武長生夷隅)、奈良県内(東和・中和)、あわせて21医療圏に散らばる。都道府県地図では非有意だった東京都・福岡県・千葉県・奈良県の一部医療圏もここでは赤くなる。離島など隣接0件の14区域は孤立(NA)。](figures/03-maup-map-gi-iryoken2-1.png)
-
-都道府県地図で赤くなるのは佐賀県・長崎県の2県だけですが、二次医療圏地図では東京都・福岡県・千葉県・奈良県にも赤が現れ、hot spotと判定される医療圏の総数は21まで増えます。**都道府県地図には無かった赤が、二次医療圏地図には現れる**——これが表で確認した東京都の分類の入れ替わりを、地図としても裏付けています。なお両方の地図とも `cold spot`(周囲を含めて低い値の塊)は1件も検出されませんでした——この専門医偏在のデータでは、「集中して多い」場所はあっても「集中して少ない」場所は(この閾値では)無かったということです。
+都道府県地図で赤くなるのは`r hot_pref_names`の`r n_hot_pref`県だけですが、二次医療圏地図では`r newly_hot_pref_text`にも赤が現れ、hot spotと判定される医療圏の総数は`r n_hot_iryoken2`まで増えます。**都道府県地図には無かった赤が、二次医療圏地図には現れる**——これが表で確認した東京都の分類の入れ替わりを、地図としても裏付けています。なお両方の地図とも `cold spot`(周囲を含めて低い値の塊)は1件も検出されませんでした——この専門医偏在のデータでは、「集中して多い」場所はあっても「集中して少ない」場所は(この閾値では)無かったということです。
 
 ## Step 5: 「隣」の定義の感度(系列A、queen vs 距離閾値 vs k近傍)
 
 [章2](../concepts/ch2-spatial-weights.md)で説明した通り、隣接の定義そのものも分析者が選ぶものです。ここまでは queen contiguity に固定してきましたが、距離閾値(`spdep::dnearneigh()`)やk近傍(`spdep::knearneigh()`)に変えるとGlobal Moran's Iがどう動くかを確認します。`dnearneigh(..., longlat = TRUE)` の距離の単位はkm(度ではない)である点に注意してください。
 
-``` r
+```{r centroids}
 # st_centroid() は poly2nb()/mat2listw() と違いこの環境でも異常終了しない
 # (CLAUDE.md「この環境の罠」参照)ため、Rmdから直接呼んでよい。
 pref_centroids <- st_centroid(pref_sf[match(pref_df$pref_code, pref_sf$pref_code), ])
@@ -717,7 +602,7 @@ iryoken2_centroids <- st_centroid(iryoken2_sf[match(iryoken2_df$area_code, iryok
 iryoken2_coords <- st_coordinates(iryoken2_centroids)
 ```
 
-``` r
+```{r weight-sensitivity}
 pref_dn300 <- dnearneigh(pref_coords, 0, 300, longlat = TRUE)
 pref_dn800 <- dnearneigh(pref_coords, 0, 800, longlat = TRUE)
 pref_kn4 <- knn2nb(knearneigh(pref_coords, k = 4, longlat = TRUE))
@@ -761,23 +646,13 @@ weight_sensitivity |>
   knitr::kable(digits = c(NA, NA, 4, 4, 0), col.names = c("単位", "重み定義", "Moran's I", "p値", "孤立区域数"))
 ```
 
-| 単位            | 重み定義         | Moran's I |    p値 | 孤立区域数 |
-|:----------------|:-----------------|----------:|-------:|-----------:|
-| 都道府県(47)    | queen contiguity |    0.1674 | 0.0194 |          2 |
-| 都道府県(47)    | 距離閾値300km    |    0.1171 | 0.0003 |          2 |
-| 都道府県(47)    | 距離閾値800km    |    0.0506 | 0.0008 |          0 |
-| 都道府県(47)    | k近傍(k=4)       |    0.1849 | 0.0041 |          0 |
-| 二次医療圏(339) | queen contiguity |    0.1509 | 0.0000 |         14 |
-| 二次医療圏(339) | 距離閾値50km     |    0.0614 | 0.0413 |         19 |
-| 二次医療圏(339) | k近傍(k=6)       |    0.1074 | 0.0000 |          0 |
-
-都道府県レベルで見ると、queen contiguityのMoran's I(0.167)に対して、距離閾値300kmでは0.117、孤立を完全に解消する800kmでは0.051まで下がります。800kmまで緩めると47都道府県のほとんどが互いに隣接する密なグラフになり(平均隣接数が跳ね上がります)、「隣」というより「ほぼ全国が均等に影響し合う」設定に近づくため、空間的な集中の情報が薄まってI自体が小さくなります。一方でk近傍(k=4)は孤立を解消しながらもqueenに近い0.185という値になりました。**「孤立を解消する」という同じ目的でも、距離閾値をどこまで緩めるかによってMoran's Iの値そのものが数倍単位で変わります。** これが[章6](../concepts/ch6-pitfalls.md)の5番目の落とし穴「『隣』の定義の事後決定」の実例です——分析後に都合の良い定義を選べてしまう余地が、これだけの幅で存在します。
+都道府県レベルで見ると、queen contiguityのMoran's I(`r round(ws_pref_queen[["I"]], 3)`)に対して、距離閾値300kmでは`r round(ws_pref_dn300[["I"]], 3)`、孤立を完全に解消する800kmでは`r round(ws_pref_dn800[["I"]], 3)`まで下がります。800kmまで緩めると`r nrow(pref_df)`都道府県のほとんどが互いに隣接する密なグラフになり(平均隣接数が跳ね上がります)、「隣」というより「ほぼ全国が均等に影響し合う」設定に近づくため、空間的な集中の情報が薄まってI自体が小さくなります。一方でk近傍(k=4)は孤立を解消しながらもqueenに近い`r round(ws_pref_kn4[["I"]], 3)`という値になりました。**「孤立を解消する」という同じ目的でも、距離閾値をどこまで緩めるかによってMoran's Iの値そのものが数倍単位で変わります。** これが[章6](../concepts/ch6-pitfalls.md)の5番目の落とし穴「『隣』の定義の事後決定」の実例です——分析後に都合の良い定義を選べてしまう余地が、これだけの幅で存在します。
 
 ## Step 6: 分子3系列の感度(単位の効果とは別の軸)
 
 Step 4で東京都の分類を系列Aだけで確認しましたが、系列B(勤務地ベース)・系列C(公式集計)でも同じ結論になるかを確認します。**ここで変えているのは分子の定義であり、単位(都道府県)は変えていません。** Step 4・Step 5が単位・重み定義という軸だったのに対し、これは別の軸です。
 
-``` r
+```{r tokyo-series-sensitivity}
 classify_tokyo <- function(rate, series_label) {
   lm <- localmoran(rate, pref_listw, zero.policy = TRUE)
   gi <- as.numeric(localG(rate, pref_listw_incl_self, zero.policy = TRUE))
@@ -809,57 +684,29 @@ tokyo_sensitivity |>
   knitr::kable(col.names = c("分子系列", "東京都のLISA分類", "東京都のGi* z値", "都道府県レベルのhot spot件数"))
 ```
 
-| 分子系列 | 東京都のLISA分類 | 東京都のGi\* z値 | 都道府県レベルのhot spot件数 |
-|:---|:---|:---|:---|
-| A: 積み上げ(care) | High-Low | -0.387 | 2 |
-| B: 勤務地ベース(all) | High-Low | -0.324 | 2 |
-| C: 公式集計 | High-Low | -0.396 | 2 |
-
 系列を変えても、東京都のLISA分類・Gi\* z値・都道府県レベルのhot spot件数はほぼ動きません。**「東京都が都道府県レベルではhot spotに見えない」という結論は、分子をどう数えるか(care/all/official)には左右されない一方、単位(都道府県か二次医療圏か)を変えると前のStep 4で確認した通りひっくり返ります。** 単位の効果と分子定義の効果は別の軸であり、今回のデータでは前者のほうがずっと結果を動かすことが分かります。
 
 ## 隣接ゼロの地域をどう扱ったか
 
-このページを通じて、都道府県2件(北海道・沖縄県)・二次医療圏14件(いずれも離島)が queen contiguity で孤立します。`moran.test()` / `localmoran()` / `localG()` はいずれも `zero.policy = TRUE` を渡すことで、孤立地域をエラーにせず「隣が無い地域」として計算を続行します。具体的には、空間ラグ(`lag.listw()` が計算する「隣の値の平均」)は孤立地域では定義できないため0として扱われますが、**「周囲と比べてどうか」という分類そのものが孤立地域には定義できないため、このページではStep 4で `isolated <- card(nb) == 0` を使って、孤立地域のLISA分類(`quadrant`)とGi\* z値(`gi_z`)を明示的にNAへ上書きしています。** `zero.policy = TRUE` でエラーを止めることと、孤立地域の局所統計を意味のある「結果」として見せないことは別の配慮です。
+このページを通じて、都道府県`r sum(pref_lisa_gi$isolated)`件(`r isolated_pref_names`)・二次医療圏`r sum(iryoken2_lisa_gi$isolated)`件(いずれも離島)が queen contiguity で孤立します。`moran.test()` / `localmoran()` / `localG()` はいずれも `zero.policy = TRUE` を渡すことで、孤立地域をエラーにせず「隣が無い地域」として計算を続行します。具体的には、空間ラグ(`lag.listw()` が計算する「隣の値の平均」)は孤立地域では定義できないため0として扱われますが、**「周囲と比べてどうか」という分類そのものが孤立地域には定義できないため、このページではStep 4で `isolated <- card(nb) == 0` を使って、孤立地域のLISA分類(`quadrant`)とGi\* z値(`gi_z`)を明示的にNAへ上書きしています。** `zero.policy = TRUE` でエラーを止めることと、孤立地域の局所統計を意味のある「結果」として見せないことは別の配慮です。
 
 次の表の通り、孤立地域はいずれもLISA分類・局所p値・Gi\* z値がNA(またはNaN)になります。
 
-``` r
+```{r isolated-regions-table}
 pref_lisa_gi |>
   filter(isolated) |>
   select(pref_name, rate_care, quadrant, local_p, gi_z) |>
   knitr::kable(digits = 3, col.names = c("都道府県", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
-| 都道府県 |    率 | LISA分類 | 局所p値 | Gi\* z値 |
-|:---------|------:|:---------|--------:|---------:|
-| 北海道   | 0.861 | NA       |     NaN |       NA |
-| 沖縄県   | 1.431 | NA       |     NaN |       NA |
-
-``` r
+```{r isolated-regions-table-iryoken2}
 iryoken2_lisa_gi |>
   filter(isolated) |>
   select(pref_name, area_name, rate_care, quadrant, local_p, gi_z) |>
   knitr::kable(digits = 3, col.names = c("都道府県", "二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
-| 都道府県 | 二次医療圏 |    率 | LISA分類 | 局所p値 | Gi\* z値 |
-|:---------|:-----------|------:|:---------|--------:|---------:|
-| 東京都   | 島しょ     | 0.000 | NA       |     NaN |       NA |
-| 新潟県   | 佐渡       | 0.000 | NA       |     NaN |       NA |
-| 兵庫県   | 淡路       | 0.785 | NA       |     NaN |       NA |
-| 島根県   | 隠岐       | 0.000 | NA       |     NaN |       NA |
-| 香川県   | 小豆       | 0.000 | NA       |     NaN |       NA |
-| 長崎県   | 五島       | 2.908 | NA       |     NaN |       NA |
-| 長崎県   | 上五島     | 0.000 | NA       |     NaN |       NA |
-| 長崎県   | 壱岐       | 0.000 | NA       |     NaN |       NA |
-| 長崎県   | 対馬       | 0.000 | NA       |     NaN |       NA |
-| 熊本県   | 天草       | 0.000 | NA       |     NaN |       NA |
-| 鹿児島県 | 熊毛       | 0.000 | NA       |     NaN |       NA |
-| 鹿児島県 | 奄美       | 0.000 | NA       |     NaN |       NA |
-| 沖縄県   | 宮古       | 0.000 | NA       |     NaN |       NA |
-| 沖縄県   | 八重山     | 0.000 | NA       |     NaN |       NA |
-
-``` r
+```{r isolated-effect-on-global-moran}
 # zero.policy = TRUEは孤立地域があってもエラーで止めずに計算を続行させるだけの
 # 設定で、moran.test()の既定(adjust.n = TRUE)は隣接0件の地域をnからも落とす。
 # 「孤立地域はGlobal Moran's Iの計算対象に残る」という主張が正しいかどうかを、
@@ -886,7 +733,7 @@ mt_iryoken2_noadjn <- moran.test(
 I_iryoken2_noadjn <- unname(mt_iryoken2_noadjn$estimate[["Moran I statistic"]])
 ```
 
-孤立地域を隣接から除外しているわけではありませんが、Global Moran's Iの計算対象にもそのまま残っているわけではありません。`zero.policy = TRUE` は孤立地域があってもエラーにせず計算を続行させるだけの設定で、`moran.test()` の既定である `adjust.n = TRUE` が、隣接0件の地域をnからも落とします。実際、都道府県のnは47ではなく45、二次医療圏のnは339ではなく325で計算されています。この違いはMoran's Iの値そのものにも表れます——二次医療圏のMoran's I(系列A)は既定(`adjust.n = TRUE`、Step 3の表の値)では0.1509ですが、孤立地域も含めた339区域をnとして数える`adjust.n = FALSE`では0.1574に変わります。
+孤立地域を隣接から除外しているわけではありませんが、Global Moran's Iの計算対象にもそのまま残っているわけではありません。`zero.policy = TRUE` は孤立地域があってもエラーにせず計算を続行させるだけの設定で、`moran.test()` の既定である `adjust.n = TRUE` が、隣接0件の地域をnからも落とします。実際、都道府県のnは`r n_pref_all`ではなく`r n_pref_used`、二次医療圏のnは`r n_iryoken2_all`ではなく`r n_iryoken2_used`で計算されています。この違いはMoran's Iの値そのものにも表れます——二次医療圏のMoran's I(系列A)は既定(`adjust.n = TRUE`、Step 3の表の値)では`r round(I_iryoken2_adjn, 4)`ですが、孤立地域も含めた`r n_iryoken2_all`区域をnとして数える`adjust.n = FALSE`では`r round(I_iryoken2_noadjn, 4)`に変わります。
 
 前のStep 5で見た通り、距離閾値やk近傍に切り替えれば孤立そのものは解消できますが、その代わりにMoran's Iの値が変わります。**「孤立を解消する」ことと「隣の定義を変えずに孤立を許容する」ことのどちらが良いかにも、唯一の正解はありません。** 本ページでは主要な結果(Step 2〜4)はqueen contiguity + zero.policyのまま示し、距離閾値・k近傍はあくまで感度分析として別枠で扱いました。
 
@@ -902,7 +749,3 @@ I_iryoken2_noadjn <- unname(mt_iryoken2_noadjn$estimate[["Moran I statistic"]])
 **どちらの地域単位が「正しい」かをこのページは決めません。** 都道府県は行政単位として馴染みがあり地図も見やすい一方、二次医療圏は医療のアクセスという実質に近い単位です。重要なのは、単位の選択を分析の後付けの都合(結論が好都合になる方を選ぶ)で決めないこと、そして可能なら複数の単位で同じ分析を行い、結論が単位に依存していないかを確認することです。
 
 次はこのケーススタディ全体を通しで実践する[④ケーススタディ](04-case-study.md)に進みます。
-
----
-
-このページのソース: [03-maup.Rmd をダウンロード](rmd/03-maup.Rmd)
