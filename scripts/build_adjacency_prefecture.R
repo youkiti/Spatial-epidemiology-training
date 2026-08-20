@@ -42,9 +42,26 @@ sf::sf_use_s2(FALSE)
 
 args <- commandArgs(trailingOnly = TRUE)
 
+fail <- function(msg) {
+  message(msg)
+  quit(status = 1)
+}
+
 get_arg <- function(flag, default) {
   idx <- which(args == flag)
-  if (length(idx) == 0 || idx == length(args)) return(default)
+  if (length(idx) == 0) return(default)
+  if (length(idx) > 1) {
+    fail(sprintf(
+      "エラー: 引数 %s が %d 回指定されています。同じフラグは1回だけ指定してください。",
+      flag, length(idx)
+    ))
+  }
+  if (idx == length(args)) {
+    fail(sprintf(
+      "エラー: 引数 %s に値が指定されていません(フラグの後に値を続けてください)。",
+      flag
+    ))
+  }
   args[idx + 1]
 }
 
@@ -57,11 +74,6 @@ default_rscript_bin <- file.path(
 pref_path <- get_arg("--prefecture-boundaries", default_pref_path)
 out_dir <- get_arg("--out-dir", "data/geo")
 rscript_bin <- get_arg("--rscript-bin", default_rscript_bin)
-
-fail <- function(msg) {
-  message(msg)
-  quit(status = 1)
-}
 
 if (!file.exists(pref_path)) {
   fail(paste0(
@@ -285,6 +297,93 @@ comp_sizes <- comp_sizes[comp_order]
 singleton_codes <- sort(as.character(unlist(components[comp_sizes == 1])))
 components_match_isolated <- identical(singleton_codes, sort(as.character(isolated_codes)))
 
+# 地方名の対応表(pref_codeキー、issue #40)。「本州34都府県+四国4県が1つの
+# 連結成分に併合されている」ことを、都道府県名の羅列(先頭6件+ほかN件)ではなく
+# 地方単位の内訳で一目で分かるようにするために使う。
+region_of_pref <- c(
+  "01" = "北海道",
+  "02" = "東北", "03" = "東北", "04" = "東北", "05" = "東北", "06" = "東北", "07" = "東北",
+  "08" = "関東", "09" = "関東", "10" = "関東", "11" = "関東", "12" = "関東", "13" = "関東", "14" = "関東",
+  "15" = "中部", "16" = "中部", "17" = "中部", "18" = "中部", "19" = "中部", "20" = "中部",
+  "21" = "中部", "22" = "中部", "23" = "中部",
+  "24" = "近畿", "25" = "近畿", "26" = "近畿", "27" = "近畿", "28" = "近畿", "29" = "近畿", "30" = "近畿",
+  "31" = "中国", "32" = "中国", "33" = "中国", "34" = "中国", "35" = "中国",
+  "36" = "四国", "37" = "四国", "38" = "四国", "39" = "四国",
+  "40" = "九州", "41" = "九州", "42" = "九州", "43" = "九州", "44" = "九州", "45" = "九州", "46" = "九州",
+  "47" = "沖縄"
+)
+region_order <- c("北海道", "東北", "関東", "中部", "近畿", "中国", "四国", "九州", "沖縄")
+
+# --- ブリッジ(この1本で連結が決まるエッジ)。除去すると連結成分数が増える
+# エッジ(グラフ理論の bridge)を、本採用の隣接関係(main_edges、無向グラフ
+# として扱う)から求める。DFS 1回(Tarjan のブリッジ検出、O(V+E))で求める。
+# アルゴリズムは scripts/build_geo.R の診断7と同じもの(新規パッケージは
+# 導入しない)。R のコールスタック上限を避けるため再帰ではなく明示スタックで書く。
+find_bridges <- function(nodes, adj_list) {
+  disc <- setNames(rep(NA_integer_, length(nodes)), nodes)
+  low <- setNames(rep(NA_integer_, length(nodes)), nodes)
+  parent <- setNames(rep(NA_character_, length(nodes)), nodes)
+  visited <- setNames(rep(FALSE, length(nodes)), nodes)
+  timer <- 0L
+  bridges <- list()
+
+  for (start in nodes) {
+    if (visited[[start]]) next
+    stack <- list(list(node = start, idx = 1L))
+    visited[[start]] <- TRUE
+    timer <- timer + 1L
+    disc[[start]] <- timer
+    low[[start]] <- timer
+    while (length(stack) > 0) {
+      top <- stack[[length(stack)]]
+      u <- top$node
+      nbrs <- adj_list[[u]]
+      if (is.null(nbrs)) nbrs <- character(0)
+      if (top$idx <= length(nbrs)) {
+        v <- nbrs[top$idx]
+        stack[[length(stack)]]$idx <- top$idx + 1L
+        if (!visited[[v]]) {
+          visited[[v]] <- TRUE
+          timer <- timer + 1L
+          disc[[v]] <- timer
+          low[[v]] <- timer
+          parent[[v]] <- u
+          stack[[length(stack) + 1]] <- list(node = v, idx = 1L)
+        } else if (!identical(v, parent[[u]])) {
+          # 逆辺(バックエッジ)。単純グラフを前提とする(同一ペアの多重辺は無い)。
+          low[[u]] <- min(low[[u]], disc[[v]])
+        }
+      } else {
+        # u の子を全て見終わった。親に low を伝播し、ブリッジ条件を判定してpop。
+        stack[[length(stack)]] <- NULL
+        p <- parent[[u]]
+        if (!is.na(p)) {
+          low[[p]] <- min(low[[p]], low[[u]])
+          if (low[[u]] > disc[[p]]) {
+            bridges[[length(bridges) + 1]] <- c(p, u)
+          }
+        }
+      }
+    }
+  }
+  bridges
+}
+
+# adj_list は上で作成済み(main_edges から split したもの)。探索順序への依存を
+# 無くすため近傍を昇順に揃える(ブリッジの集合自体は探索順序に依存しないグラフの
+# 性質だが、出力の決定性のため揃えておく)。
+bridge_adj_list <- lapply(adj_list, function(x) sort(unique(x)))
+bridges <- find_bridges(all_codes, bridge_adj_list)
+
+order_edge <- function(e) if (e[1] <= e[2]) e else rev(e)
+bridges <- lapply(bridges, order_edge)
+
+is_cross_region <- function(e) region_of_pref[[e[1]]] != region_of_pref[[e[2]]]
+cross_region_bridges <- Filter(is_cross_region, bridges)
+if (length(cross_region_bridges) > 0) {
+  cross_region_bridges <- cross_region_bridges[order(sapply(cross_region_bridges, function(e) e[1]))]
+}
+
 # --- 出力(1→2→3→4→5→6 の順に並べる。子プロセスのログは付録として最後に出す) --
 
 emit("## 3. 孤立都道府県(隣接0件)の列挙")
@@ -349,7 +448,7 @@ emit("- 都道府県単位の空間重み行列(隣接グラフ)が連結して�
 emit("  ハンズオン③(MAUP)で都道府県単位のGlobal Moran's Iを計算する際に")
 emit("  直接効く論点のため、実測して記録する。")
 emit(sprintf("- 連結成分の個数: %d", length(components)))
-emit("- サイズ(降順)と代表都道府県:")
+emit("- サイズ(降順)と地方内訳:")
 for (i in seq_along(components)) {
   comp <- components[[i]]
   size <- comp_sizes[i]
@@ -360,12 +459,12 @@ for (i in seq_along(components)) {
       i, pref_sf$pref_name[idxs]
     ))
   } else {
-    names_label <- pref_sf$pref_name[idxs]
-    if (length(names_label) > 6) {
-      label <- sprintf("%s ほか%d件", paste(names_label[1:6], collapse = "、"), length(names_label) - 6)
-    } else {
-      label <- paste(names_label, collapse = "、")
-    }
+    # 都道府県名の羅列(先頭6件+ほかN件)ではなく地方単位の件数で内訳を示す。
+    # これにより例えば「四国4県が本州側の成分に含まれている」ことが一目で
+    # 分かる(issue #40)。
+    region_counts_tbl <- table(factor(region_of_pref[comp], levels = region_order))
+    region_counts_tbl <- region_counts_tbl[region_counts_tbl > 0]
+    label <- paste(sprintf("%s%d", names(region_counts_tbl), as.integer(region_counts_tbl)), collapse = "・")
     emit(sprintf("  - 成分%d: %d都道府県(%s)", i, size, label))
   }
 }
@@ -377,6 +476,32 @@ emit(sprintf(
 ))
 if (!components_match_isolated) {
   fail("エラー: 連結成分から求めた孤立都道府県(サイズ1の成分)が診断3の孤立都道府県と一致しません。main_edgesの対称性を確認してください。")
+}
+emit("")
+
+emit("- 地方をまたぐブリッジ(除去すると連結成分の数が増えるエッジ)を機械的に")
+emit("  列挙する。地方境界をまたぐエッジは陸続きの地方間(東北-関東など)にも")
+emit("  多数あるが、そのほとんどはブリッジではない(迂回路が別にある)。")
+emit("  ブリッジかつ地方をまたぐものだけに絞ると、「その1本だけで地方間の")
+emit("  連結・非連結が決まる」急所だけが残る。")
+emit(sprintf("  - ブリッジ総数: %d 件(無向グラフとして判定)", length(bridges)))
+emit(sprintf("  - うち地方をまたぐもの: %d 件", length(cross_region_bridges)))
+if (length(cross_region_bridges) > 0) {
+  emit("  - 地方をまたぐブリッジの一覧:")
+  for (e in cross_region_bridges) {
+    idx1 <- match(e[1], pref_sf$pref_code)
+    idx2 <- match(e[2], pref_sf$pref_code)
+    emit(sprintf(
+      "    - %s(%s、%s) <-> %s(%s、%s)",
+      pref_sf$pref_name[idx1], e[1], region_of_pref[[e[1]]],
+      pref_sf$pref_name[idx2], e[2], region_of_pref[[e[2]]]
+    ))
+  }
+  emit("  都道府県をまたぐブリッジは、その1本で地方間の連結・非連結が決まって")
+  emit("  いる急所である。具体的な地名の由来・妥当性の解説は data/geo/README.md")
+  emit("  を参照。")
+} else {
+  emit("  - 地方をまたぐブリッジは検出されなかった。")
 }
 emit("")
 
