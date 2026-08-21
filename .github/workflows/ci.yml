@@ -2,15 +2,21 @@ name: CI
 
 # PRごとの必須チェック。deploy-pages.yml(push時の実デプロイ)とは完全に独立。
 #
-# ゲートは5つ。すべて Python の標準ライブラリだけで動く(mkdocs 以外の pip 依存を
+# ゲートは7つ。すべて Python の標準ライブラリだけで動く(mkdocs 以外の pip 依存を
 # CI に持ち込まない方針。データ整備用の依存は requirements-data.txt にあり、CI は
 # install しない)。
 #
-#   1. quiz_lint.py               クイズJSONの作問チェック(testwiseness cue)
-#   2. verify_facility_linkage.py 施設名寄せ・二次医療圏割付の受け入れ条件(issue #9)
-#   3. check_handson_fresh.py     ハンズオン生成物が Rmd と一致しているか(issue #17)
-#   4. mkdocs build --strict      サイトが警告ゼロでビルドできるか
-#   5. check_links.py             内部リンク・画像パスが実ファイルに解決するか
+#   1. compileall                   scripts/ 配下の Python が構文的に壊れていないか
+#   2. quiz_lint.py                 クイズJSONの作問チェック(testwiseness cue)
+#   3. verify_facility_linkage.py   施設名寄せ・二次医療圏割付の受け入れ条件(issue #9)
+#   4. verify_simulation.py --sweep 合成データの受け入れ条件と Moran's I の単調性(issue #6)
+#   5. check_handson_fresh.py       ハンズオン生成物が Rmd と一致しているか(issue #17)
+#   6. mkdocs build --strict        サイトが警告ゼロでビルドできるか
+#   7. check_links.py               内部リンク・画像パスが実ファイルに解決するか
+#
+# compileall と verify_simulation.py --sweep はどちらも一瞬で終わる(この環境・
+# Python 3.11 での実測でそれぞれ約0.1秒・約0.7秒)。週次側(external-links.yml /
+# weekly-deps.yml)に退避する理由が無いため、必須ゲートに置いている。
 #
 # 外部リンク(https://…)の生存確認はここでは行わない。リンク先の一時的な不調や
 # bot 排除で PR が落ちると、PR の内容と無関係にマージがブロックされるため。外部リンクは
@@ -49,6 +55,10 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # scripts/ 配下の Python 全スクリプトの構文検査。壊れた .py があるなら
+      # 他のどのゲートより先に、最速で知らせる(実行はしない・構文チェックのみ)。
+      - run: python -m compileall -q scripts
+
       # クイズJSONの作問チェック(documents/作問ガイドライン.md §3 が閾値の正本)。
       # 閾値を緩めて通すのではなく、設問と選択肢の方を直すこと。
       - run: python scripts/quiz_lint.py
@@ -57,6 +67,12 @@ jobs:
       # 数値(全国合計1,626名・割付率85.9%・Spearman ρ など)がコミット済みCSVから
       # 再現できることを、ここで毎回検算する。
       - run: python scripts/verify_facility_linkage.py
+
+      # 合成データ(data/simulated/)の受け入れ条件検査(issue #6)。--sweep を付けると
+      # smooth-passes を変えたときに Global Moran's I が単調に変化することまで見る
+      # (「仕込んだ強さに整合する値が出る」ことの確認。一時ディレクトリで完結し
+      # リポジトリには何も残らない)。
+      - run: python scripts/verify_simulation.py --sweep
 
       # Rハンズオン(docs/handson/)の生成物(md・図・配布用.Rmdコピー)の鮮度チェック
       # (issue #17)。「CIにRを入れない」方針のため、Rmdのレンダリングは常にローカルで

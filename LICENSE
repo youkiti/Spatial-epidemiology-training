@@ -18,6 +18,8 @@ Copyright (c) 2026 youkiti
   - docs/ 配下の Markdown・画像・SVG・クイズJSON(docs/assets/js/ を除く)
   - documents/ 配下の設計文書
   - README.md
+  - analysis/ 配下の .Rmd の地の文(コードチャンク以外の解説文)、および
+    そこから生成される図(docs/handson/figures/ を含む)
 
 ライセンス: Creative Commons 表示 4.0 国際(CC BY 4.0)
 

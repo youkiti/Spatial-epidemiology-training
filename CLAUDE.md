@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## このリポジトリの現状
 
-**Phase0〜Phase3 が完了し、open issue は残っていない（2026-08-21時点）。** 設計文書・サイト骨格・クイズエンジン・概念パート全6章・Phase1のデータ整備・引用の一次資料での裏取り・Rハンズオン本編3本が main に入り、GitHub Pages で公開されている。
+**Phase0〜Phase3 が完了し、GitHub Pages で公開されている（2026-08-21時点）。** 設計文書・サイト骨格・クイズエンジン・概念パート全6章・Phase1のデータ整備・引用の一次資料での裏取り・Rハンズオン本編3本が main に入っている。**ただし「open issue は残っていない」わけではない** — 同日の納品前監査で issue #44〜#55 の12件が新規に起票され、すべて open のまま残っている。
 
 公開先: <https://youkiti.github.io/Spatial-epidemiology-training/>
 
@@ -92,18 +92,20 @@ overrides/       404.html のテーマオーバーライド
 
 ```bash
 pip install -r requirements.txt
-mkdocs build --strict                      # CI と同じ検査。警告ゼロ・exit 0 で通ること
-mkdocs serve                               # クイズは fetch を使うので file:// 直開きでは動かない
-python scripts/quiz_lint.py                # クイズJSONの testwiseness cue 検査
-python scripts/verify_facility_linkage.py  # 施設の名寄せ・二次医療圏割付（issue #9）の受け入れ条件検査
-python scripts/check_links.py              # 内部リンク・画像パスの検査（先に mkdocs build が要る）
-Rscript scripts/render_handson.R           # Rmd → docs/handson/ の md + 図（ローカル専用。CI には R を入れない）
-python scripts/check_handson_fresh.py      # 生成物が最新か（R を実行せずハッシュ照合。CI が回す）
+mkdocs build --strict                       # CI と同じ検査。警告ゼロ・exit 0 で通ること
+mkdocs serve                                # クイズは fetch を使うので file:// 直開きでは動かない
+python -m compileall -q scripts             # scripts/ 配下の Python の構文検査
+python scripts/quiz_lint.py                 # クイズJSONの testwiseness cue 検査
+python scripts/verify_facility_linkage.py   # 施設の名寄せ・二次医療圏割付（issue #9）の受け入れ条件検査
+python scripts/verify_simulation.py --sweep # 合成データの受け入れ条件と Moran's I の単調性（issue #6）
+python scripts/check_links.py               # 内部リンク・画像パスの検査（先に mkdocs build が要る）
+Rscript scripts/render_handson.R            # Rmd → docs/handson/ の md + 図（ローカル専用。CI には R を入れない）
+python scripts/check_handson_fresh.py       # 生成物が最新か（R を実行せずハッシュ照合。CI が回す）
 
-pip install -r requirements-data.txt       # データを取り直す・作り直すときだけ（pandas ほか）
+pip install -r requirements-data.txt        # データを取り直す・作り直すときだけ（pandas ほか）
 ```
 
-**CI の必須ゲートは5つ**（`quiz_lint.py` → `verify_facility_linkage.py` → `check_handson_fresh.py` → `mkdocs build --strict` → `check_links.py`）。いずれも標準ライブラリだけで動くので、CI は `requirements.txt`（mkdocs 一式）しか install しない。**外部リンクの生存確認は必須ゲートに入れていない** — リンク先の一時的な不調で PR がブロックされるため、`external-links.yml` が週次で lychee を回す。
+**CI の必須ゲートは7つ**（`compileall` → `quiz_lint.py` → `verify_facility_linkage.py` → `verify_simulation.py --sweep` → `check_handson_fresh.py` → `mkdocs build --strict` → `check_links.py`）。いずれも標準ライブラリだけで動くので、CI は `requirements.txt`（mkdocs 一式）しか install しない。**外部リンクの生存確認は必須ゲートに入れていない** — リンク先の一時的な不調で PR がブロックされるため、`external-links.yml` が週次で lychee を回す。同様に、`requirements.txt` / `requirements-data.txt` の既知脆弱性の検査（pip-audit）と `requirements-data.txt` のクリーンインストール試験も `weekly-deps.yml` が週次で回し、PR はブロックしない。
 
 ビルド出力の読み方に罠がある:
 
@@ -260,7 +262,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 - **架空データと実データの役割分担** = 架空の10市町村データは概念導入用、専門医名簿はケーススタディ専用
 - **`renv::restore()` の修正は issue #19 の中で実施済み**（2026-08-19 決定 → 2026-08-20 実施）。決定時の方針どおり、#18 は先に版を動かさず現行の検証済み環境のまま進め（先に動かすと `sf` 1.0.21 / `spdep` 1.4.1 で確認した `poly2nb()` / `mat2listw()` の終了時クラッシュを再確認する手間が #18 の前に挟まるため）、#19 で `CARBayes` を入れて R 環境を触るタイミングでリポジトリを P3M の日付スナップショット（`2025-11-01`）へ切り替えてまとめて直した。`sf` 1.0.21 / `spdep` 1.4.1 は据え置いたまま、空のプロジェクトライブラリから `renv::restore()` が完走することを実測で確認済み。詳細は「環境」節と `analysis/README.md`
 - **CAR/BYM の実装** = `CARBayes`（issue #19 本文で確定）。`INLA` は CRAN ではなく専用リポジトリからの導入で読者に要求するハードルが高いため、章5で違いに触れるに留める（`docs/concepts/ch5-explanatory.md` に反映済み）
-- **ライセンス** = 教材（`docs/` の文章・図・クイズ、`documents/`、`README.md`）は **CC BY 4.0**、コード（`scripts/`、`analysis/` の `.Rmd`、`docs/assets/js/`、`.github/`）は **MIT**。外部データ由来のファイルは各出典の利用条件に従う。正本は `LICENSE` / `LICENSE-CODE`、読者向けの記載は `docs/about.md`。**CC BY 4.0 の legal code 全文はリポジトリに収録していない**（URL で参照する形にした。クラウドセッションからは creativecommons.org が egress proxy で遮断されており全文を取得できなかったため。全文を同梱したくなったらローカルで貼ること）
+- **ライセンス** = 教材（`docs/` の文章・図・クイズ、`documents/`、`README.md`、`analysis/` の `.Rmd` の地の文とそこから生成される図）は **CC BY 4.0**、コード（`scripts/`、`analysis/` の `.Rmd`（コードチャンク）、`docs/assets/js/`、`.github/`）は **MIT**。`.Rmd` はファイル単体では区分できず、コードチャンクと地の文でライセンスが分かれる（issue #46 で確定）。外部データ由来のファイルは各出典の利用条件に従う。正本は `LICENSE` / `LICENSE-CODE`、読者向けの記載は `docs/about.md`。**CC BY 4.0 の legal code 全文はリポジトリに収録していない**（URL で参照する形にした。クラウドセッションからは creativecommons.org が egress proxy で遮断されており全文を取得できなかったため。全文を同梱したくなったらローカルで貼ること）
 - **統合ケーススタディ（旧ハンズオン④）は作らない** = `docs/handson/04-case-study.md` は実データの制約を開示する**資料ページ**であり、ハンズオン本編ではない。3段階の型は①〜③が段階ごとに扱う（[カリキュラム設計](documents/カリキュラム設計.md) §4.4 が経緯の正本）
 - **簡略化済み（表示専用）GeoJSON を隣接判定に使ってよいか** = 使ってよい。`snap=0` と `snap=0.0001`（座標丸め幅と同程度）で queen contiguity の隣接ペアが完全一致した（1,558件、集合差0件）ため、0.0001度丸めは隣接判定に影響していない。本採用は `snap=0`。測定手順と全診断は `scripts/build_geo.R` と `data/geo/adjacency_diagnostics.md`
 

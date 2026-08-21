@@ -20,8 +20,8 @@
 
 | 対象 | ライセンス |
 |---|---|
-| 教材そのもの(本サイトの文章・図・クイズ、リポジトリの `documents/`) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
-| コード(`scripts/`、`analysis/` の `.Rmd`、クイズエンジンの JavaScript、CI 定義) | [MIT License](https://github.com/youkiti/Spatial-epidemiology-training/blob/main/LICENSE-CODE) |
+| 教材そのもの(本サイトの文章・図・クイズ、リポジトリの `documents/`、`analysis/` の `.Rmd` の地の文とそこから生成される図) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+| コード(`scripts/`、`analysis/` の `.Rmd`(コードチャンク)、クイズエンジンの JavaScript、CI 定義) | [MIT License](https://github.com/youkiti/Spatial-epidemiology-training/blob/main/LICENSE-CODE) |
 | 外部データに由来するファイル(`data/` の一部) | 各出典の利用条件に従います(上記「出典」および `documents/DATA_SOURCES.md`) |
 
 教材は**営利目的を含めて自由に複製・改変・再配布できます。** 条件はクレジットの表示だけです。表示例:
