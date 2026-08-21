@@ -38,9 +38,22 @@ jobs:
         with:
           # site/ のビルド済みHTMLを見る(docs/ の Markdown ではなく)。実際に読者が
           # クリックするURLと同じものを検査するため。
+          #
+          # --root-dir はルート相対リンク(/Spatial-epidemiology-training/…)の解決先。
+          # これが無いと lychee はローカルHTMLの走査でルート相対リンクを解決できず、
+          # --scheme や --exclude のフィルタが適用される前に「Cannot resolve
+          # root-relative link」の ERROR で落ちる(issue #53 の初回実行が全ページの
+          # ナビゲーションリンクでこれを踏んだ。--exclude '^/' でも抑止できないことを
+          # 実測済み)。解決さえできれば file:// リンクになり、--scheme https/http の
+          # フィルタで検査対象から外れる。ルート相対リンクはすべてサイト内部の
+          # リンクで、内部リンクは PR ごとに scripts/check_links.py が必須ゲートとして
+          # 検査済みのため、この workflow(外部リンク専用)で実在確認する必要はない。
+          # つまり --root-dir の値は「解決を成功させる」ためだけにあり、site/ 配下に
+          # /Spatial-epidemiology-training/… が実在するかどうかは検査に影響しない。
           args: >-
             --no-progress
             --exclude-all-private
+            --root-dir '${{ github.workspace }}/site'
             --max-retries 2
             --accept 200,203,206,403,429
             --scheme https
