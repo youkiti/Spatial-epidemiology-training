@@ -46,7 +46,12 @@ jobs:
 
       - run: pip-audit -r requirements.txt
 
-      - run: pip-audit -r requirements-data.txt
+      # if: always() が要る。既定では前のステップが赤いとここは実行されないため、
+      # requirements.txt 側に脆弱性が出た週は requirements-data.txt 側が
+      # 「検査されなかった」まま隠れてしまう(ジョブを3本に分けたのと同じ理由で、
+      # 一方の赤が他方の結果を覆い隠さないようにする)。
+      - if: always()
+        run: pip-audit -r requirements-data.txt
 
   # requirements-data.txt のクリーンインストール試験(Linux)。まっさらな venv に
   # インストールし、インストールが通っただけでなく実際に import できることまで見る

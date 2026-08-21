@@ -29,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 3. **利用者向け文書の古い記述を更新**した（`CARBayes` か `INLA` か未決定 → `CARBayes` 採用で確定、SaTScan の扱い、`renv.lock` と図の版の関係）
 4. **データ整備用の依存を `requirements-data.txt` に固定**した（`pandas` / `requests` / `openpyxl` / `pdfplumber`）。`requirements.txt` はサイト用のまま
 5. **`renv.lock` と図の生成環境の食い違いを文書化**した（版を揃えるのではなく、何を保証するものかを明示する方針。`analysis/README.md` と `docs/handson/00-setup.md`）
-6. **CI の必須ゲートを5つに増やした**（下記「コマンド」節と `.github/workflows/ci.yml`）
+6. **CI の必須ゲートを5つに増やした**（下記「コマンド」節と `.github/workflows/ci.yml`）。**その後 issue #52 で7つになっている** — 現在の数と並びは下記「コマンド」節が正
 
 ```
 documents/       設計の正本3文書。実装より先にここを読む
