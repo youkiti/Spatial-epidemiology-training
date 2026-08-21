@@ -192,6 +192,8 @@
 
     var warning = el("p", { className: "spepi-quiz-warning" });
     warning.setAttribute("hidden", "hidden");
+    // role="status"で未回答警告を支援技術に通知する。
+    warning.setAttribute("role", "status");
     form.appendChild(warning);
 
     var actions = el("div", { className: "spepi-quiz-actions" });
@@ -213,20 +215,33 @@
 
     var summary = el("div", { className: "spepi-quiz-summary" });
     summary.setAttribute("hidden", "hidden");
+    // サマリー外枠をフォーカス先にし、ライブ通知を担う status 要素とは分離する。
+    // WAI-ARIA は状態変化に伴って role="status" 自身へフォーカスしないよう推奨している。
+    summary.setAttribute("tabindex", "-1");
+    var summaryStatus = el("p", { className: "spepi-quiz-score" });
+    summaryStatus.setAttribute("role", "status");
+    summary.appendChild(summaryStatus);
     form.appendChild(summary);
 
     submitBtn.addEventListener("click", function () {
-      gradeQuiz(instanceId, entries, form, warning, summary, passRatio, gate);
+      gradeQuiz(instanceId, entries, form, warning, summary, summaryStatus, passRatio, gate);
     });
 
     clearBtn.addEventListener("click", function () {
-      resetQuiz(entries, warning, summary);
+      resetQuiz(entries, warning, summary, summaryStatus);
     });
 
     container.appendChild(form);
   }
 
-  function gradeQuiz(instanceId, entries, form, warning, summary, passRatio, gate) {
+  function clearSummary(summary, summaryStatus) {
+    while (summary.lastChild && summary.lastChild !== summaryStatus) {
+      summary.removeChild(summary.lastChild);
+    }
+    summaryStatus.textContent = "";
+  }
+
+  function gradeQuiz(instanceId, entries, form, warning, summary, summaryStatus, passRatio, gate) {
     var unanswered = [];
     var answers = [];
 
@@ -249,11 +264,18 @@
     }
 
     if (unanswered.length > 0) {
-      renderQuestionListMessage(warning, T.unansweredWarningPrefix, instanceId, unanswered);
+      // 空のライブ領域を先にアクセシビリティツリーへ戻してから内容を更新する。
+      // hidden 中に内容を作って一度に表示すると、status の通知を拾わない支援技術がある。
+      warning.textContent = "";
       warning.removeAttribute("hidden");
+      renderQuestionListMessage(warning, T.unansweredWarningPrefix, instanceId, unanswered);
+      clearSummary(summary, summaryStatus);
       summary.setAttribute("hidden", "hidden");
+      // 先頭の未回答設問へフォーカスを移し、支援技術の利用者を該当箇所まで導く。
+      entries[unanswered[0] - 1].fieldset.focus();
       return;
     }
+    warning.textContent = "";
     warning.setAttribute("hidden", "hidden");
 
     var correctCount = 0;
@@ -295,17 +317,13 @@
     var passLine = Math.ceil(entries.length * passRatio);
     var passed = correctCount >= passLine;
 
-    summary.innerHTML = "";
+    clearSummary(summary, summaryStatus);
     summary.removeAttribute("hidden");
-    summary.appendChild(
-      el("p", {
-        className: "spepi-quiz-score",
-        // 自己チェック(gateなし)は合否を持たないため合格ラインを表示しない
-        text: gate
-          ? T.scoreWithGate(correctCount, entries.length, passLine)
-          : T.scoreNoGate(correctCount, entries.length)
-      })
-    );
+    // 自己チェック(gateなし)は合否を持たないため合格ラインを表示しない。
+    // 外枠を表示してから永続的な status 要素を更新し、ライブ通知を確実に発火させる。
+    summaryStatus.textContent = gate
+      ? T.scoreWithGate(correctCount, entries.length, passLine)
+      : T.scoreNoGate(correctCount, entries.length);
 
     // 不正解一覧はgateの有無(章末クイズ/自己チェック)を問わず表示する。
     if (incorrectNums.length > 0) {
@@ -334,12 +352,16 @@
       }
       summary.appendChild(resultP);
     }
+
+    // サマリーの内容を組み立て終えた後にフォーカスを移し、支援技術の利用者に
+    // 採点結果を伝える。
+    summary.focus();
   }
 
   // 「選択をクリア」ボタンの処理。回答・判定・警告・採点サマリーをすべて取り除き、
   // ページを開き直した直後と同じ見た目に戻す。合格記録(localStorage)や
   // 合格済み注記(spepi-quiz-passed-note、form要素の外側にある)は回答状態ではないため対象外。
-  function resetQuiz(entries, warning, summary) {
+  function resetQuiz(entries, warning, summary, summaryStatus) {
     for (var i = 0; i < entries.length; i++) {
       var entry = entries[i];
 
@@ -358,7 +380,7 @@
     warning.textContent = "";
     warning.setAttribute("hidden", "hidden");
 
-    summary.innerHTML = "";
+    clearSummary(summary, summaryStatus);
     summary.setAttribute("hidden", "hidden");
   }
 
