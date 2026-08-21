@@ -40,6 +40,10 @@
 #   requests の TLS 通信にも cryptography は使われない(requests は urllib3 経由で
 #   標準ライブラリの ssl モジュールを使う)。upstream が win_arm64 wheel の配布を
 #   再開したらこの pin は外す。
+#   したがって「pip-audit 0件」は requests / pdfplumber / pdfminer.six / pandas /
+#   openpyxl の5パッケージだけを指し、requirements-data.txt 全体の結果ではない。
+#   issue #45 の元の「全依存0件」という受け入れ条件は、オーナー判断記録により
+#   「上記5パッケージ0件 + cryptography 7件をWindows ARM64限定で受容」に置き換えた。
 #
 # 動作確認環境: Windows 11 ARM64 / Python 3.11.9(2026-08-21 実測)。
 
