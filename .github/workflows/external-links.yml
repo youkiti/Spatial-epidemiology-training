@@ -38,9 +38,18 @@ jobs:
         with:
           # site/ のビルド済みHTMLを見る(docs/ の Markdown ではなく)。実際に読者が
           # クリックするURLと同じものを検査するため。
+          #
+          # --exclude '^/' はルート相対リンク(/Spatial-epidemiology-training/…)の除外。
+          # lychee はローカルHTMLの走査ではルート相対リンクを解決できず、--scheme の
+          # フィルタより前に「Cannot resolve root-relative link」の ERROR にしてしまう
+          # (issue #53 の初回実行が全ページのナビゲーションリンクでこれを踏んで落ちた)。
+          # ルート相対リンクはすべてサイト内部のリンクで、内部リンクは PR ごとに
+          # scripts/check_links.py が必須ゲートとして検査済み。この workflow は
+          # 外部リンク専用なので除外してよい。
           args: >-
             --no-progress
             --exclude-all-private
+            --exclude '^/'
             --max-retries 2
             --accept 200,203,206,403,429
             --scheme https
