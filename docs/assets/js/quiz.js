@@ -192,6 +192,8 @@
 
     var warning = el("p", { className: "spepi-quiz-warning" });
     warning.setAttribute("hidden", "hidden");
+    // role="status"で未回答警告を支援技術に通知する。
+    warning.setAttribute("role", "status");
     form.appendChild(warning);
 
     var actions = el("div", { className: "spepi-quiz-actions" });
@@ -213,6 +215,10 @@
 
     var summary = el("div", { className: "spepi-quiz-summary" });
     summary.setAttribute("hidden", "hidden");
+    // role="status"で採点サマリーを支援技術に通知する。tabindex="-1"は
+    // fieldsetと同じくスクリプトからのフォーカス移動のみを許可するため。
+    summary.setAttribute("role", "status");
+    summary.setAttribute("tabindex", "-1");
     form.appendChild(summary);
 
     submitBtn.addEventListener("click", function () {
@@ -252,6 +258,8 @@
       renderQuestionListMessage(warning, T.unansweredWarningPrefix, instanceId, unanswered);
       warning.removeAttribute("hidden");
       summary.setAttribute("hidden", "hidden");
+      // 先頭の未回答設問へフォーカスを移し、支援技術の利用者を該当箇所まで導く。
+      entries[unanswered[0] - 1].fieldset.focus();
       return;
     }
     warning.setAttribute("hidden", "hidden");
@@ -334,6 +342,10 @@
       }
       summary.appendChild(resultP);
     }
+
+    // サマリーの内容を組み立て終えた後にフォーカスを移し、支援技術の利用者に
+    // 採点結果を伝える。
+    summary.focus();
   }
 
   // 「選択をクリア」ボタンの処理。回答・判定・警告・採点サマリーをすべて取り除き、
