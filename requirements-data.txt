@@ -14,8 +14,41 @@
 # 版はこのリポジトリで import と CLI 引数解析が通ることを確認した組(2026-08-21 実測)。
 # pandas は 3.0 系ではなく 2.3 系に留めている(3.0 は copy-on-write 既定化などの
 # 後方非互換を含み、scripts/ 側で未検証のため)。
+#
+# requests・pdfplumber は既知脆弱性の修正版に上げている(issue #45、OSVで確認):
+#   - requests 2.32.5 に PYSEC-2026-2275。2.33.0 で修正。
+#   - pdfplumber が推移的に導入する pdfminer.six 20250506 に PYSEC-2026-1761 /
+#     PYSEC-2026-1762。修正には pdfminer.six>=20251230 が要るが、pdfplumber は
+#     pdfminer.six を `==` で完全一致 pin するため、pdfplumber 側の版を上げるしかない。
+#     0.11.9 が pdfminer.six==20251230(両CVEの修正版ちょうど)を pin する最小の版
+#     (0.11.8 は 20251107 止まりで PYSEC-2026-1761 未修正、0.11.10 は
+#     pdfminer.six==20260107 だが Pillow>=12.2.0 / pypdfium2>=5.9.0 まで
+#     引き上げるため、必要最小限の 0.11.9 を採用)。
+#
+# cryptography の Windows ARM64 限定 pin(issue #45。決定済みの方針):
+#   pdfminer.six は cryptography に依存する。cryptography は 46.0.4 以降、
+#   win_arm64 の wheel を意図的に配布していない(Windows の ARM64 CI 基盤の
+#   問題を理由にメンテナが表明。pyca/cryptography#14249)。そのため Windows ARM64
+#   に限り、下記の環境マーカーで 46.0.3(win_arm64 wheel がある最後の版)に固定する。
+#   他プラットフォームはこのマーカーが偽になるため制約を受けず、pdfminer.six の
+#   `cryptography>=36.0.0` のまま最新のクリーンな版に解決される。
+#
+#   既知の制限: Windows ARM64 上で `pip-audit -r requirements-data.txt` を実行すると
+#   このマーカーが真になり、46.0.3 の既知脆弱性(7件、修正は46.0.5〜50.0.0に分散)が
+#   報告される。これは受容済み — このパイプラインで cryptography が使われるのは
+#   pdfminer.six が暗号化PDFをローカルで復号する経路のみで、名簿PDFは暗号化されておらず、
+#   requests の TLS 通信にも cryptography は使われない(requests は urllib3 経由で
+#   標準ライブラリの ssl モジュールを使う)。upstream が win_arm64 wheel の配布を
+#   再開したらこの pin は外す。
+#   したがって「pip-audit 0件」は requests / pdfplumber / pdfminer.six / pandas /
+#   openpyxl の5パッケージだけを指し、requirements-data.txt 全体の結果ではない。
+#   issue #45 の元の「全依存0件」という受け入れ条件は、オーナー判断記録により
+#   「上記5パッケージ0件 + cryptography 7件をWindows ARM64限定で受容」に置き換えた。
+#
+# 動作確認環境: Windows 11 ARM64 / Python 3.11.9(2026-08-21 実測)。
 
 pandas==2.3.3        # build_population.py / build_population_age.py の集計
-requests==2.32.5     # fetch_meibo.py(専門医名簿PDF)/ fetch_census_age.py(e-Stat)の取得
+requests==2.33.0     # fetch_meibo.py(専門医名簿PDF)/ fetch_census_age.py(e-Stat)の取得
 openpyxl==3.1.5      # build_population_age.py / fetch_census_age.py の xlsx 読み書き
-pdfplumber==0.11.7   # parse_meibo.py の名簿PDF抽出(pdfminer.six・cryptography を推移的に導入)
+pdfplumber==0.11.9   # parse_meibo.py の名簿PDF抽出(pdfminer.six・cryptography を推移的に導入)
+cryptography==46.0.3 ; platform_system == "Windows" and platform_machine == "ARM64"  # pdfminer.six の推移的依存。win_arm64 wheel がある最後の版に固定(上記コメント参照)
