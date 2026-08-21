@@ -21,10 +21,10 @@ Description:
     CARBayes(CAR/BYMモデルの当てはめ)を追加した(sf は #20 で既に入っていたため、
     二次医療圏ポリゴンの読み込みと geom_sf()での描画にそのまま流用している。
     面積計算(st_area())は lwgeom が未導入のため使っていない)。spatialreg は
-    issue #19 の時点では未使用(CARBayesのみで完結したため)。License フィールドは
-    意図的に省いてある。リポジトリのライセンスは未決定のため(CLAUDE.md
-    「未決定事項(実装前にユーザーに確認する)」の1番目。CC BY 4.0 が候補)、決まり
-    次第記入する。
+    issue #19 の時点では未使用(CARBayesのみで完結したため)。ライセンスは確定済み
+    (issue #46): .Rmd のコードチャンクは MIT、地の文と生成される図は CC BY 4.0。
+    詳細はリポジトリルートの LICENSE / LICENSE-CODE を参照。
+License: MIT
 Encoding: UTF-8
 Imports:
     rmarkdown,

@@ -2,9 +2,9 @@
 #
 # サイトのビルド(mkdocs)には不要なので requirements.txt とは分けている。CI が回すのは
 # サイトのビルドと検算スクリプトだけで、検算スクリプト(quiz_lint.py /
-# verify_facility_linkage.py / check_handson_fresh.py / check_links.py)は標準ライブラリ
-# だけで書かれているため、CI はこのファイルを install しない。データを取り直す・
-# 作り直すときにだけ必要になる。
+# verify_facility_linkage.py / verify_simulation.py / check_handson_fresh.py /
+# check_links.py)は標準ライブラリだけで書かれているため、CI はこのファイルを
+# install しない。データを取り直す・作り直すときにだけ必要になる。
 #
 #   pip install -r requirements-data.txt
 #

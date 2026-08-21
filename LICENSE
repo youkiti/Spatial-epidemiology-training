@@ -18,6 +18,10 @@ Copyright (c) 2026 youkiti
   - docs/ 配下の Markdown・画像・SVG・クイズJSON(docs/assets/js/ を除く)
   - documents/ 配下の設計文書
   - README.md
+  - analysis/ 配下の .Rmd の地の文(コードチャンク以外の解説文)、および
+    そこから生成される図(docs/handson/figures/ を含む)。ページ末尾から
+    ダウンロードできる配布用コピー docs/handson/rmd/ の .Rmd も同じ扱い
+    (analysis/ 配下の .Rmd とバイト単位で同一のファイル)
 
 ライセンス: Creative Commons 表示 4.0 国際(CC BY 4.0)
 
@@ -51,6 +55,7 @@ Copyright (c) 2026 youkiti
 
   - scripts/ 配下の .py / .R
   - analysis/ 配下の .Rmd(コードチャンク)および renv 関連ファイル
+    (配布用コピー docs/handson/rmd/ の .Rmd のコードチャンクも同じ)
   - docs/assets/js/ 配下の JavaScript(クイズエンジン)
   - .github/ 配下のワークフロー定義
 

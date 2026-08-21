@@ -1,0 +1,108 @@
+name: Weekly dependency check
+
+# requirements.txt / requirements-data.txt の週次点検。**PRの必須ゲートにはしない**
+# (pull_request トリガを付けない)。external-links.yml と同じ設計方針で、依存の
+# 一時的な事情でPRのマージがブロックされることを避けるため。
+#
+# ジョブを3本に分けている(1本にまとめない):
+#   - pip-audit は「既知脆弱性の検知」がジョブの役目そのものなので、赤くなることが
+#     ある(むしろ正常)。continue-on-error にはしない。
+#   - install-test-linux / install-test-windows-arm は「クリーンインストールできるか」
+#     という別の観点の試験。pip-audit の既知の赤(下記参照)がこの試験の結果を
+#     覆い隠さないように、ジョブを分けて独立に緑/赤を見られるようにしている。
+on:
+  schedule:
+    # 毎週火曜 03:41 UTC(= 火曜 12:41 JST)。external-links.yml が月曜 00:17 UTC を
+    # 使っているため曜日をずらす。分を0にしないのは同ファイルと同じ理由で、
+    # GitHub Actions のスケジュールは毎時0分に集中して遅延しやすいため。
+    - cron: "41 3 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # requirements.txt と requirements-data.txt の既知脆弱性を pip-audit で見る。
+  #
+  # 重要な既知の状態: このジョブは issue #45 が解決するまで赤になるのが正常。
+  # 2026-08-21 時点の実測で requirements-data.txt に既知脆弱性が3件ある
+  # (requests 2.32.5 → PYSEC-2026-2275、pdfminer.six 20250506 → PYSEC-2026-1762 /
+  # PYSEC-2026-1761。いずれも修正版が出ている: requests 2.33.0、pdfminer.six は
+  # 20251107 または 20251230)。requirements.txt 側は同日時点で0件。
+  #
+  # continue-on-error は付けない。赤になることが検知の役目そのものだから
+  # (付けてしまうと、脆弱性が増えても週次ワークフローが常に緑のままになり
+  # 気づけなくなる)。
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pip-audit
+
+      - run: pip-audit -r requirements.txt
+
+      # if: always() が要る。既定では前のステップが赤いとここは実行されないため、
+      # requirements.txt 側に脆弱性が出た週は requirements-data.txt 側が
+      # 「検査されなかった」まま隠れてしまう(ジョブを3本に分けたのと同じ理由で、
+      # 一方の赤が他方の結果を覆い隠さないようにする)。
+      - if: always()
+        run: pip-audit -r requirements-data.txt
+
+  # requirements-data.txt のクリーンインストール試験(Linux)。まっさらな venv に
+  # インストールし、インストールが通っただけでなく実際に import できることまで見る
+  # (インストールだけ通って import で落ちる、というケースを取りこぼさないため)。
+  install-test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m venv .venv
+
+      - run: .venv/bin/pip install -r requirements-data.txt
+
+      - run: .venv/bin/python -c "import pandas, requests, openpyxl, pdfplumber"
+
+  # 同じ導入試験を Windows ARM64 で行う。開発機が Windows ARM64 であり、issue #45 が
+  # 「cryptography(pdfplumber → pdfminer.six の推移的依存)に win_arm64 wheel が無く
+  # ソースビルドに落ちて失敗する」ことを実測しているため、同じ環境でも回して継続的に見る。
+  install-test-windows-arm:
+    runs-on: windows-11-arm
+    # このジョブは失敗しても週次ワークフロー全体を赤にしない。理由は2つ:
+    #   (a) この失敗自体が issue #45 で既知であり、既知の失敗で全体を赤にする意味がない
+    #   (b) windows-11-arm というランナーラベルがこのリポジトリで実際に使えるかを
+    #       実装時に確認できていない(docs.github.com がこの作業環境の egress
+    #       プロキシで遮断されていたため)。ラベルが使えなかった場合でも週次全体が
+    #       落ちないようにしておく
+    continue-on-error: true
+    # cryptography に win_arm64 wheel が無い場合、pip はソースビルド(Rust)に落ちる。
+    # 失敗するにせよ成功するにせよ長時間ランナーを占有しうるので上限を切っておく。
+    timeout-minutes: 30
+    env:
+      # Windows では requirements-data.txt の日本語コメントを pip が既定の
+      # ロケール(cp932)で読もうとして UnicodeDecodeError になる(CLAUDE.md の
+      # 既知の罠)。しかも pip が終了コード0を返すことがあり、気づかずに
+      # 進んでしまう。PYTHONUTF8=1 で pip の読み込みを UTF-8 に固定する。
+      PYTHONUTF8: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m venv .venv
+
+      # Windows のシェルは既定で PowerShell。venv のパスは Linux と違い
+      # .venv\Scripts\ 以下になる。
+      - run: .venv\Scripts\pip.exe install -r requirements-data.txt
+
+      - run: .venv\Scripts\python.exe -c "import pandas, requests, openpyxl, pdfplumber"

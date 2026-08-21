@@ -37,16 +37,18 @@ data/            合成データ、境界データ、加工済みCSV(生デー�
 ```bash
 pip install -r requirements.txt
 
-mkdocs serve                               # ローカルプレビュー(file:// 直開きではクイズが動かない)
-mkdocs build --strict                      # CI と同じ検査。警告ゼロ・exit 0 で通ること
+mkdocs serve                                # ローカルプレビュー(file:// 直開きではクイズが動かない)
+mkdocs build --strict                       # CI と同じ検査。警告ゼロ・exit 0 で通ること
 
-python scripts/quiz_lint.py                # クイズJSONの作問チェック
-python scripts/check_links.py              # 内部リンク・画像パスの検査(site/ をビルドしてから)
-python scripts/check_handson_fresh.py      # ハンズオン生成物が Rmd と一致しているか
-python scripts/verify_facility_linkage.py  # 施設名寄せ・二次医療圏割付の受け入れ条件
+python -m compileall -q scripts             # scripts/ 配下の Python の構文検査
+python scripts/quiz_lint.py                 # クイズJSONの作問チェック
+python scripts/check_links.py               # 内部リンク・画像パスの検査(site/ をビルドしてから)
+python scripts/check_handson_fresh.py       # ハンズオン生成物が Rmd と一致しているか
+python scripts/verify_facility_linkage.py   # 施設名寄せ・二次医療圏割付の受け入れ条件
+python scripts/verify_simulation.py --sweep # 合成データの受け入れ条件と Moran's I の単調性
 ```
 
-上の5つはすべて CI の必須ゲートです(`.github/workflows/ci.yml`)。いずれも標準ライブラリだけで動きます。
+上の7つはすべて CI の必須ゲートです(`.github/workflows/ci.yml`)。いずれも標準ライブラリだけで動きます。
 
 データを取り直す・作り直すときだけ追加の依存が要ります:
 
@@ -72,14 +74,14 @@ Windows では `pip install` に `PYTHONUTF8=1` を付けてください(require
 
 出典・取得日・利用条件・生成コマンドは [documents/DATA_SOURCES.md](documents/DATA_SOURCES.md) が正本です。
 
-専門医名簿(日本感染症学会)の**生データと中間生成物はコミットしていません**(個人名と所属を含むため)。リポジトリが保持するのは加工過程のコードと、氏名を含まない地域単位の集計値だけです。データにアクセスできない環境でも学習が止まらないよう、概念パートと①③のハンズオンは合成データだけで完結します。
+専門医名簿(日本感染症学会)の**生データと中間生成物はコミットしていません**(個人名と所属を含むため)。リポジトリが保持するのは加工過程のコードと、氏名を含まない地域単位の集計値だけです。データにアクセスできない環境でも学習が止まらないよう、概念パートと⓪①のハンズオンは合成データだけで完結します。
 
 ## ライセンス
 
 | 対象 | ライセンス |
 |---|---|
-| 教材(`docs/` の文章・図・クイズ、`documents/`、この README) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
-| コード(`scripts/`、`analysis/` の .Rmd、`docs/assets/js/`、`.github/`) | [MIT](LICENSE-CODE) |
+| 教材(`docs/` の文章・図・クイズ、`documents/`、この README、`analysis/` の .Rmd の地の文とそこから生成される図) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) |
+| コード(`scripts/`、`analysis/` の .Rmd(コードチャンク)、`docs/assets/js/`、`.github/`) | [MIT](LICENSE-CODE) |
 | 外部データに由来するファイル(`data/` の一部) | 各出典の利用条件([documents/DATA_SOURCES.md](documents/DATA_SOURCES.md)) |
 
 詳細と表示例は [LICENSE](LICENSE) を参照してください。
