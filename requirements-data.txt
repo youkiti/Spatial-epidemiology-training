@@ -1,0 +1,21 @@
+# データ整備用の依存(scripts/ 配下のデータ取得・加工スクリプト)。
+#
+# サイトのビルド(mkdocs)には不要なので requirements.txt とは分けている。CI が回すのは
+# サイトのビルドと検算スクリプトだけで、検算スクリプト(quiz_lint.py /
+# verify_facility_linkage.py / check_handson_fresh.py / check_links.py)は標準ライブラリ
+# だけで書かれているため、CI はこのファイルを install しない。データを取り直す・
+# 作り直すときにだけ必要になる。
+#
+#   pip install -r requirements-data.txt
+#
+# Windows ローカルでは requirements.txt と同じ罠がある(日本語コメントを cp932 で読もうと
+# して UnicodeDecodeError)。PYTHONUTF8=1 を付けて実行すること。
+#
+# 版はこのリポジトリで import と CLI 引数解析が通ることを確認した組(2026-08-21 実測)。
+# pandas は 3.0 系ではなく 2.3 系に留めている(3.0 は copy-on-write 既定化などの
+# 後方非互換を含み、scripts/ 側で未検証のため)。
+
+pandas==2.3.3        # build_population.py / build_population_age.py の集計
+requests==2.32.5     # fetch_meibo.py(専門医名簿PDF)/ fetch_census_age.py(e-Stat)の取得
+openpyxl==3.1.5      # build_population_age.py / fetch_census_age.py の xlsx 読み書き
+pdfplumber==0.11.7   # parse_meibo.py の名簿PDF抽出(pdfminer.six・cryptography を推移的に導入)

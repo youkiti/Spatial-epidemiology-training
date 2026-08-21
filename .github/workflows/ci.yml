@@ -1,11 +1,20 @@
 name: CI
 
-# PRごとの必須チェック。--strict ビルドが警告ゼロで通ることを検査する。
-# deploy-pages.yml(push時の実デプロイ)とは完全に独立。
+# PRごとの必須チェック。deploy-pages.yml(push時の実デプロイ)とは完全に独立。
 #
-# lychee 等のリンクチェックは今回(issue #2)は入れない。ai-kotohajime にはあるが
-# issue #2 の受け入れ条件(mkdocs build --strict が警告ゼロで通ること)の対象外であり、
-# スコープを広げないため。将来、公開ページの本数が増えた段階で追加する余地はある。
+# ゲートは5つ。すべて Python の標準ライブラリだけで動く(mkdocs 以外の pip 依存を
+# CI に持ち込まない方針。データ整備用の依存は requirements-data.txt にあり、CI は
+# install しない)。
+#
+#   1. quiz_lint.py               クイズJSONの作問チェック(testwiseness cue)
+#   2. verify_facility_linkage.py 施設名寄せ・二次医療圏割付の受け入れ条件(issue #9)
+#   3. check_handson_fresh.py     ハンズオン生成物が Rmd と一致しているか(issue #17)
+#   4. mkdocs build --strict      サイトが警告ゼロでビルドできるか
+#   5. check_links.py             内部リンク・画像パスが実ファイルに解決するか
+#
+# 外部リンク(https://…)の生存確認はここでは行わない。リンク先の一時的な不調や
+# bot 排除で PR が落ちると、PR の内容と無関係にマージがブロックされるため。外部リンクは
+# external-links.yml が週次で見る(そちらが落ちてもマージは止まらない)。
 on:
   # base ブランチを絞らない。issue #1〜#3 はスタックしたPRで運用しており、base が
   # main とは限らない(feat/phase0-documents や feat/phase0-mkdocs など)。
@@ -40,7 +49,14 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - run: mkdocs build --strict
+      # クイズJSONの作問チェック(documents/作問ガイドライン.md §3 が閾値の正本)。
+      # 閾値を緩めて通すのではなく、設問と選択肢の方を直すこと。
+      - run: python scripts/quiz_lint.py
+
+      # 施設名寄せ・二次医療圏割付(issue #9)の受け入れ条件1〜9。教材が公開している
+      # 数値(全国合計1,626名・割付率85.9%・Spearman ρ など)がコミット済みCSVから
+      # 再現できることを、ここで毎回検算する。
+      - run: python scripts/verify_facility_linkage.py
 
       # Rハンズオン(docs/handson/)の生成物(md・図・配布用.Rmdコピー)の鮮度チェック
       # (issue #17)。「CIにRを入れない」方針のため、Rmdのレンダリングは常にローカルで
@@ -49,3 +65,10 @@ jobs:
       # ハッシュを標準ライブラリのみで再計算・照合することで、「Rmdを変えたのにmdを
       # 再生成していない」「生成物を手で書き換えた」を検出する。
       - run: python scripts/check_handson_fresh.py
+
+      - run: mkdocs build --strict
+
+      # 内部リンクと画像パスの検査。mkdocs build --strict は、生HTMLの相対パスずれと
+      # ディレクトリURL形式のページ間リンクを取りこぼす(どちらもビルドは緑のまま実サイトが
+      # 壊れる。CLAUDE.md の既知の罠)。site/ をビルドした後に走らせる必要がある。
+      - run: python scripts/check_links.py

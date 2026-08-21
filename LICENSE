@@ -1,0 +1,88 @@
+空間疫学入門(Spatial-epidemiology-training)のライセンス
+========================================================
+
+このリポジトリは、対象物ごとに2つのライセンスを使い分けています。
+
+  1. 教材そのもの(文章・図・クイズ)  … Creative Commons 表示 4.0 国際(CC BY 4.0)
+  2. コード                          … MIT License(LICENSE-CODE を参照)
+  3. 外部データに由来するファイル    … 各出典の利用条件(下記「3.」を参照)
+
+Copyright (c) 2026 youkiti
+
+
+1. 教材(CC BY 4.0)
+-------------------
+
+対象:
+
+  - docs/ 配下の Markdown・画像・SVG・クイズJSON(docs/assets/js/ を除く)
+  - documents/ 配下の設計文書
+  - README.md
+
+ライセンス: Creative Commons 表示 4.0 国際(CC BY 4.0)
+
+  概要(deed):  https://creativecommons.org/licenses/by/4.0/deed.ja
+  法的条文:    https://creativecommons.org/licenses/by/4.0/legalcode.ja
+
+このファイルには CC BY 4.0 の全文(legal code)を収録していません。上記URLで
+公開されている条文が正文です。
+
+あなたは、営利目的を含むあらゆる目的で、この教材を複製・頒布・改変・翻案して
+かまいません。条件は「適切なクレジットを表示すること」だけです。クレジットには
+次の情報を含めてください。
+
+  - 作品名: 空間疫学入門(Spatial-epidemiology-training)
+  - 作者:   youkiti
+  - 出典:   https://youkiti.github.io/Spatial-epidemiology-training/
+  - ライセンス: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+  - 改変した場合は、改変した旨
+
+表示例:
+
+  「空間疫学入門」(youkiti 作)を改変して利用。
+  https://youkiti.github.io/Spatial-epidemiology-training/
+  CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+
+
+2. コード(MIT License)
+-----------------------
+
+対象:
+
+  - scripts/ 配下の .py / .R
+  - analysis/ 配下の .Rmd(コードチャンク)および renv 関連ファイル
+  - docs/assets/js/ 配下の JavaScript(クイズエンジン)
+  - .github/ 配下のワークフロー定義
+
+全文は LICENSE-CODE にあります。
+
+なお docs/assets/js/ のクイズエンジンは、同一著者による ai-kotohajime
+(https://github.com/youkiti/ai-kotohajime)から移植したものです。
+
+
+3. 外部データに由来するファイル
+--------------------------------
+
+data/ 配下には、国土数値情報・e-Stat・医療情報ネット・日本感染症学会専門医名簿
+などの外部データを加工したファイルが含まれます。これらは上記1・2ではなく、
+**各出典の利用条件**に従います。出典・取得日・利用条件は
+documents/DATA_SOURCES.md が正本です。主なものは次のとおりです。
+
+  - 境界データ(data/geo/)
+      国土数値情報 医療圏データ 第2.0版(A38-20)、国土交通省。
+      国土数値情報ダウンロードサービス利用規約(オープンデータ)。
+      測量法に基づく国土地理院長承認 R 2JHs 664。
+
+  - 人口データ(data/processed/population_*.csv)
+      令和2年国勢調査(e-Stat)および厚生労働省「2040年に向けた地域医療構想」
+      公表資料。政府標準利用規約(第2.0版)準拠。出典明記のうえで二次利用可。
+
+  - 専門医数(data/processed/specialists_*.csv)
+      日本感染症学会 感染症専門医名簿(2026-07-01版)を集計したもの。
+      氏名を含まない地域単位の集計値のみを保持しています。
+
+  - 合成データ(data/simulated/)
+      このリポジトリが生成したものであり、上記1(CC BY 4.0)の対象です。
+
+  - 名寄せの人手判断(data/curated/)
+      このリポジトリが作成したものであり、上記1(CC BY 4.0)の対象です。

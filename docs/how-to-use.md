@@ -20,8 +20,13 @@
 Rハンズオンは R Markdown(Rmd)で書かれ、実行結果をあらかじめレンダリングした状態で公開しています。ページを読むだけでも内容は追えますが、手元で再現する場合は次の環境を用意してください。
 
 - **R**: 4.5.2 で動作確認
-- 必要な R パッケージ: `sf`, `spdep`, `ggplot2`, `dplyr`, `rmarkdown`, `knitr` に加え、ハンズオン②(CAR/BYM)では `spatialreg` と `CARBayes`(または `INLA`)が必要です。パッケージの詳細な一覧は各ハンズオンページに記載します。
+- **パッケージ**: `sf`, `spdep`, `ggplot2`, `dplyr`, `rmarkdown`, `knitr` に加え、ハンズオン②(CAR/BYM)では `spatialreg` と `CARBayes` を使います。**CAR/BYM の実装は `CARBayes` で統一しています**(`INLA` は CRAN ではなく専用リポジトリからの導入になり、読者に要求するハードルが高いため採用していません。両者の違いは[章5](concepts/ch5-explanatory.md)で説明しています)。
+- **バージョンの固定**: 個々のパッケージを手で入れる必要はありません。`analysis/renv.lock` に全パッケージのバージョンが固定してあり、[⓪環境準備](handson/00-setup.md)の手順どおり `renv::restore()` を実行すれば同じ組み合わせが復元されます。
+
+Rmd の実行は、**作業ディレクトリをリポジトリのルートにしてから**行ってください(ハンズオン内のコードはルートからの相対パスでデータを読みます)。
 
 ```bash
-Rscript -e 'rmarkdown::render("path/to/file.Rmd")'
+Rscript -e 'rmarkdown::render("analysis/handson/01-map-moran-lisa-gi.Rmd")'
 ```
+
+各ハンズオンページの末尾に、そのページのもとになった `.Rmd` へのダウンロードリンクがあります。詳しい手順は[⓪環境準備](handson/00-setup.md)にまとめてあります。

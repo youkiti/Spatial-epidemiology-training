@@ -33,12 +33,16 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
 
-      # Rハンズオン(docs/handson/)の生成物(md・図・配布用.Rmdコピー)の鮮度チェック
-      # (issue #17)。ci.yml と同じ理由: 直push・管理者マージは pull_request 側の
-      # CI をすり抜けるため、実際に公開するこのワークフロー側にも同じゲートが要る。
+      # ci.yml と同じゲートを、実際に公開するこちら側にも置く。直push・管理者マージは
+      # pull_request 側の CI をすり抜けるため、ここが最後の砦になる(外部リンクの生存確認
+      # だけは external-links.yml が週次で持つ。デプロイをリンク先の不調で止めないため)。
+      - run: python scripts/quiz_lint.py
+      - run: python scripts/verify_facility_linkage.py
       - run: python scripts/check_handson_fresh.py
 
       - run: mkdocs build --strict
+
+      - run: python scripts/check_links.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

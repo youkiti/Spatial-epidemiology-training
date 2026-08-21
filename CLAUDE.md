@@ -4,30 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## このリポジトリの現状
 
-**Phase0・Phase1・Phase2 が完了（2026-08-19）。** 設計文書・サイト骨格・クイズエンジン・概念パート全6章・Phase1のデータ整備・引用の一次資料での裏取りが main に入り、GitHub Pages で公開されている。
+**Phase0〜Phase3 が完了し、open issue は残っていない（2026-08-21時点）。** 設計文書・サイト骨格・クイズエンジン・概念パート全6章・Phase1のデータ整備・引用の一次資料での裏取り・Rハンズオン本編3本が main に入り、GitHub Pages で公開されている。
 
 公開先: <https://youkiti.github.io/Spatial-epidemiology-training/>
 
-**Phase3 のハンズオン4本（#17〜#20）のうち #17・#18・#20 は main にマージ済み。** 残る #19（CAR/BYM）は実装・`renv` の依存解決まで完了し、マージ待ちの段階（2026-08-20時点）。#20 のレビューを受けて追加対応の issue #37〜#40 が起票されている。**着手前に必ず GitHub の issue 本文を読むこと**（受け入れ条件と cloud 可否がそこに書いてある）。
-
 | issue | 内容 | 状態 |
 |---|---|---|
-| #17 | Rmd レンダリング配管（Rmd → md + 図 → `docs/handson/`）、`renv.lock`、成果物の鮮度CIチェック | main にマージ済み |
-| #18 | ハンズオン1〜2「地図 → Global Moran's I → LISA → Gi\*」 | main にマージ済み |
-| #19 | ハンズオン3「CAR / BYM」 | 実装・renv解決済み（マージ待ち） |
-| #20 | ハンズオン4「MAUP の実演 — 都道府県 vs 二次医療圏」 | main にマージ済み |
-| #37〜#40 | #20 レビュー由来の追加対応 | 起票済み・対応中 |
+| #17 | Rmd レンダリング配管（Rmd → md + 図 → `docs/handson/`）、`renv.lock`、成果物の鮮度CIチェック | クローズ |
+| #18 | ハンズオン1〜2「地図 → Global Moran's I → LISA → Gi\*」 | クローズ |
+| #19 | ハンズオン3「CAR / BYM」 | クローズ（`CARBayes` で確定。renv も解決済み） |
+| #20 | ハンズオン4「MAUP の実演 — 都道府県 vs 二次医療圏」 | クローズ |
+| #33, #37〜#40 | レビュー由来の追加対応（リンクのコントラスト、ハンズオン③の整合、Gi\* 図の色差、隣接生成の後片付け） | クローズ |
 
-依存は元々一直線だった: #17 → #18 → (#19, #20)。#19 と #20 は #18 が済めば並行できる、という前提で進んだ。
+**新しい issue に着手する前に必ず GitHub の issue 本文を読むこと**（受け入れ条件と cloud 可否がそこに書いてある）。
 
-**Phase3の4本はいずれも `local-only`。R が要るため、クラウドセッションで進められる issue はもう無い。**
+**R を使う作業（Rmd の変更・再レンダリング・renv）はクラウドセッションでは完結しない。** サイト側（Markdown・クイズ・CI・データ検算）はクラウドで進められる。
+
+### 納品前の整備（2026-08-21、ブランチ `claude/pre-delivery-checklist-129zeq`）
+
+公開前チェックで挙がった6点に対応した。**この節の内容は上の各節にも反映済みなので、詳細はそちらを読むこと。**
+
+1. **ハンズオン④を資料ページに改題**した。`docs/handson/04-case-study.md` は「4本目のハンズオン」ではなく、②③が使う実データの制約をまとめた**資料**。ナビゲーションも「資料」グループに分けた（[カリキュラム設計](documents/カリキュラム設計.md) §4.4 が経緯の正本）
+2. **ライセンスを確定**した。教材は CC BY 4.0、コードは MIT。`LICENSE` / `LICENSE-CODE` / `README.md` / `docs/about.md` が対応する
+3. **利用者向け文書の古い記述を更新**した（`CARBayes` か `INLA` か未決定 → `CARBayes` 採用で確定、SaTScan の扱い、`renv.lock` と図の版の関係）
+4. **データ整備用の依存を `requirements-data.txt` に固定**した（`pandas` / `requests` / `openpyxl` / `pdfplumber`）。`requirements.txt` はサイト用のまま
+5. **`renv.lock` と図の生成環境の食い違いを文書化**した（版を揃えるのではなく、何を保証するものかを明示する方針。`analysis/README.md` と `docs/handson/00-setup.md`）
+6. **CI の必須ゲートを5つに増やした**（下記「コマンド」節と `.github/workflows/ci.yml`）
 
 ```
 documents/       設計の正本3文書。実装より先にここを読む
 docs/            MkDocs のサイトソース。ここに置いたものは公開される
   concepts/      概念パート6章（issue #10〜#15 で執筆済み。各章に自己チェック3問＋章末クイズ10問。章4のみ12問）
-  handson/       Rハンズオン。00-setup.md は analysis/handson/00-setup.Rmd からの
-                 生成物（issue #17）。01〜04 はまだプレースホルダ（#18〜#20）
+  handson/       Rハンズオン。00〜03 は analysis/handson/*.Rmd からの生成物
+                 （#17〜#20）。04-case-study.md だけは Rmd 由来ではない手書きの
+                 「資料」ページ（ハンズオン本編ではない）
     figures/     Rmd から生成した図。コミット対象
     rmd/         配布用 .Rmd コピー。ページ末尾からダウンロードできる。生成物
   assets/js/     クイズエンジン（storage.js → quiz.js → progress.js）
@@ -86,9 +96,14 @@ mkdocs build --strict                      # CI と同じ検査。警告ゼロ�
 mkdocs serve                               # クイズは fetch を使うので file:// 直開きでは動かない
 python scripts/quiz_lint.py                # クイズJSONの testwiseness cue 検査
 python scripts/verify_facility_linkage.py  # 施設の名寄せ・二次医療圏割付（issue #9）の受け入れ条件検査
+python scripts/check_links.py              # 内部リンク・画像パスの検査（先に mkdocs build が要る）
 Rscript scripts/render_handson.R           # Rmd → docs/handson/ の md + 図（ローカル専用。CI には R を入れない）
 python scripts/check_handson_fresh.py      # 生成物が最新か（R を実行せずハッシュ照合。CI が回す）
+
+pip install -r requirements-data.txt       # データを取り直す・作り直すときだけ（pandas ほか）
 ```
+
+**CI の必須ゲートは5つ**（`quiz_lint.py` → `verify_facility_linkage.py` → `check_handson_fresh.py` → `mkdocs build --strict` → `check_links.py`）。いずれも標準ライブラリだけで動くので、CI は `requirements.txt`（mkdocs 一式）しか install しない。**外部リンクの生存確認は必須ゲートに入れていない** — リンク先の一時的な不調で PR がブロックされるため、`external-links.yml` が週次で lychee を回す。
 
 ビルド出力の読み方に罠がある:
 
@@ -107,7 +122,7 @@ python scripts/check_handson_fresh.py      # 生成物が最新か（R を実行
 | 文書 | 何が決まっているか |
 |---|---|
 | [documents/要件定義書.md](documents/要件定義書.md) | 目的・想定読者・設計原則・技術構成・非目標・TBD |
-| [documents/カリキュラム設計.md](documents/カリキュラム設計.md) | 6章の学習目標とクイズ問数、**章↔issue 対応表**、ハンズオン4本 |
+| [documents/カリキュラム設計.md](documents/カリキュラム設計.md) | 6章の学習目標とクイズ問数、**章↔issue 対応表**、ハンズオン本編3本＋資料ページの役割分担（§4） |
 | [documents/作問ガイドライン.md](documents/作問ガイドライン.md) | 作問原則と lint 閾値。`scripts/quiz_lint.py` の正本 |
 
 [docs/memo.md](docs/memo.md) はこの3文書の元になった対話ログ。一次資料として残してあるが、**食い違ったら documents/ が優先**。
@@ -208,6 +223,14 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 
 この制約は Phase3（issue #17〜#20）の Rmd に直接効く。**ハンズオンの Rmd から `poly2nb()` / `mat2listw()` を直接呼ばない**。`data/geo/adjacency_iryoken2.csv`（issue #4 で生成済みの queen contiguity エッジ一覧）を読んで `nb` を組み立て、`nb2listw()` に渡す構成にする（`scripts/verify_simulation.R` が組み立ての実装例）。読者の環境では `poly2nb()` が通る可能性はあるが、その場合でも**隣接の定義を再現可能な成果物として固定しておく方が教材として正しい**（章2の「『隣』を先に決める」と対応する）。
 
+**生成済みの `docs/handson/*.md` を R 無しで直したくなったときは、3ファイル同時＋マニフェスト再計算でしかやってはいけない。** `docs/handson/00〜03.md` は `analysis/handson/*.Rmd` からの生成物で、`analysis/render_manifest.json` の SHA-256 に縛られている（`check_handson_fresh.py` が CI で照合する）。R が無いクラウドセッションで**地の文だけ**を直す必要が出た場合に限り、次の3点を守れば整合を保てる（2026-08-21 の納品前整備で実際にこの手順を使い、②③のケーススタディ参照文と⓪の renv 説明を直した）:
+
+1. `analysis/handson/X.Rmd` と `docs/handson/rmd/X.Rmd`（配布用コピー。ソースとバイト単位で同一）と `docs/handson/X.md` の**3つとも同じ文字列に**置換する
+2. 対象は**コードチャンクの外の地の文だけ**。`--wrap=none` でレンダリングしているため、地の文は Rmd → md で1行のまま素通りする（チャンクの出力・図・表は R を動かさない限り触ってはいけない）
+3. `analysis/render_manifest.json` の該当エントリの `source_rmd` / `distributed_rmd` / `output_md` の `sha256` を、`check_handson_fresh.py` の `sha256_text_file()`（CRLF を LF に正規化してからハッシュ）で再計算して書き換える
+
+**これは鮮度チェックの保証を人手で肩代わりする操作なので、次にローカルで `Rscript scripts/render_handson.R` を回したときに差分が出ないことを確認すること。** コードや図に関わる変更は絶対にこの方法でやらない。
+
 **`ragg` / `systemfonts` を読み込んだ R プロセスも終了時に落ちる**（Git Bash 経由で終了コード127。issue #17 で実測）。`mat2listw()` / `poly2nb()` と同種で、出力自体は最後まで正常に完了する。図の device に `ragg_png` を使うのは Windows で図中の日本語が豆腐にならないためで、避けられない。**`scripts/render_handson.R` の成否を終了コードで判定しないこと** — 正常終了時に stdout の最後へ `RENDER_HANDSON_OK` を出すので、その有無で判定する。
 
 **`renv::restore()` は P3M の日付スナップショットに向けることで完走するようになった（issue #19、2026-08-20）。** CRAN が配布する Windows バイナリは各パッケージの**最新版だけ**なので、`analysis/renv.lock` が固定する版が最新でなくなるとソースビルドになる。実測（2026-08-19）: `vctrs` は lock が 0.6.5、CRAN の R 4.5 向けバイナリは 0.7.3。Rtools45 は入っているのでツールチェーンの問題ではなく、C のコンパイルは最後まで通ったうえで `** byte-compile and prepare package for lazy loading` の段で `ERROR: lazy loading failed for package 'vctrs'` になった（独立に再現済み）。これは vctrs 固有ではなく、issue #17 時点の lock（51本）のうち30本が CRAN 最新とズレていた（#18 で `spdep` を足して69本になった時点でも事情は同じだった）。**`renv.lock` に `>=` は書けない**（lock は常に厳密固定）ため、直すべきはバージョン制約ではなく**リポジトリ**だった。
@@ -236,14 +259,16 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 - **境界データの入手元** = 国土数値情報の医療圏データ（A38）。隣接リポジトリ <https://github.com/youkiti/visualize-regional-medical-care-for-2040> の `doc/DATA_SOURCES.md` に取得手順と罠が文書化されている
 - **架空データと実データの役割分担** = 架空の10市町村データは概念導入用、専門医名簿はケーススタディ専用
 - **`renv::restore()` の修正は issue #19 の中で実施済み**（2026-08-19 決定 → 2026-08-20 実施）。決定時の方針どおり、#18 は先に版を動かさず現行の検証済み環境のまま進め（先に動かすと `sf` 1.0.21 / `spdep` 1.4.1 で確認した `poly2nb()` / `mat2listw()` の終了時クラッシュを再確認する手間が #18 の前に挟まるため）、#19 で `CARBayes` を入れて R 環境を触るタイミングでリポジトリを P3M の日付スナップショット（`2025-11-01`）へ切り替えてまとめて直した。`sf` 1.0.21 / `spdep` 1.4.1 は据え置いたまま、空のプロジェクトライブラリから `renv::restore()` が完走することを実測で確認済み。詳細は「環境」節と `analysis/README.md`
-- **CAR/BYM の実装** = `CARBayes`（issue #19 本文で確定）。`INLA` は CRAN ではなく専用リポジトリからの導入で読者に要求するハードルが高いため、コラムで触れるに留める
+- **CAR/BYM の実装** = `CARBayes`（issue #19 本文で確定）。`INLA` は CRAN ではなく専用リポジトリからの導入で読者に要求するハードルが高いため、章5で違いに触れるに留める（`docs/concepts/ch5-explanatory.md` に反映済み）
+- **ライセンス** = 教材（`docs/` の文章・図・クイズ、`documents/`、`README.md`）は **CC BY 4.0**、コード（`scripts/`、`analysis/` の `.Rmd`、`docs/assets/js/`、`.github/`）は **MIT**。外部データ由来のファイルは各出典の利用条件に従う。正本は `LICENSE` / `LICENSE-CODE`、読者向けの記載は `docs/about.md`。**CC BY 4.0 の legal code 全文はリポジトリに収録していない**（URL で参照する形にした。クラウドセッションからは creativecommons.org が egress proxy で遮断されており全文を取得できなかったため。全文を同梱したくなったらローカルで貼ること）
+- **統合ケーススタディ（旧ハンズオン④）は作らない** = `docs/handson/04-case-study.md` は実データの制約を開示する**資料ページ**であり、ハンズオン本編ではない。3段階の型は①〜③が段階ごとに扱う（[カリキュラム設計](documents/カリキュラム設計.md) §4.4 が経緯の正本）
 - **簡略化済み（表示専用）GeoJSON を隣接判定に使ってよいか** = 使ってよい。`snap=0` と `snap=0.0001`（座標丸め幅と同程度）で queen contiguity の隣接ペアが完全一致した（1,558件、集合差0件）ため、0.0001度丸めは隣接判定に影響していない。本採用は `snap=0`。測定手順と全診断は `scripts/build_geo.R` と `data/geo/adjacency_diagnostics.md`
 
 ## 未決定事項（実装前にユーザーに確認する）
 
-1. **ライセンス**（CC BY 4.0 が候補）
-2. **修了証（目録）を出すか** — ai-kotohajime には `certificate.js` があるが移植していない
-3. **SaTScan を実演するか、概念紹介にとどめるか** — 章4で考え方は必ず扱うが、別ソフトウェアを動かすハンズオンにするかは未決
+1. **修了証（目録）を出すか** — ai-kotohajime には `certificate.js` があるが移植していない
+2. **SaTScan の実演ハンズオンを将来足すか** — 今回の公開範囲では概念紹介にとどめると決め、章4本文にもその理由（R のパッケージではなく独立したソフトウェアであること）を書いた。将来ハンズオンとして追加するかは未決
+3. **監修体制** — 統計・疫学的内容の正確性を誰がレビューするか（[要件定義書](documents/要件定義書.md) §9）
 
 ## 執筆上の注意
 
