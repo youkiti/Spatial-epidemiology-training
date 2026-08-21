@@ -28,6 +28,9 @@ library(dplyr)
 library(spdep)
 library(sf)
 
+# ②(02-car-bym.Rmd)がlibrary(CARBayes)経由でMASSを後attachする同一Rプロセスでも
+# select()がdplyr::selectに解決されるよう、このページではselect()を明示修飾する。
+
 sf::sf_use_s2(FALSE)
 
 # コードは pref_code(2桁)・area_code(4桁)ともにゼロ埋め文字列。数値として
@@ -72,7 +75,7 @@ nrow(pop_pref)
 `specialists_iryoken2.csv` には都道府県コードが無いので、`population_iryoken2.csv`(`area_code` と `pref_code` を両方持つ)を対応表として使い、系列Aを都道府県へ積み上げます。
 
 ``` r
-code_map <- pop_iryoken2 |> select(area_code, pref_code) |> distinct()
+code_map <- pop_iryoken2 |> dplyr::select(area_code, pref_code) |> distinct()
 
 spec_iryoken2 <- spec_iryoken2 |>
   left_join(code_map, by = c("iryoken2_code" = "area_code"))
@@ -87,7 +90,7 @@ seriesA_pref <- spec_iryoken2 |>
 
 seriesC_pref <- spec_pref |>
   filter(pref_code != "99") |> # 「海外」は地図に載せられないため除外
-  select(pref_code, n_certified)
+  dplyr::select(pref_code, n_certified)
 
 cat(sprintf(
   "系列A(care)の全国合計: 二次医療圏側 %d名 / 都道府県への積み上げ後 %d名(一致するはず)\n",
@@ -115,9 +118,9 @@ cat(sprintf("系列C(公式集計、海外14名を除く47都道府県分): %d�
 
 ``` r
 iryoken2_df <- pop_iryoken2 |>
-  select(area_code, area_name, pref_code, pref_name, population_2020) |>
+  dplyr::select(area_code, area_name, pref_code, pref_name, population_2020) |>
   left_join(
-    spec_iryoken2 |> select(iryoken2_code, n_specialists_care, n_specialists_all),
+    spec_iryoken2 |> dplyr::select(iryoken2_code, n_specialists_care, n_specialists_all),
     by = c("area_code" = "iryoken2_code")
   ) |>
   mutate(
@@ -126,7 +129,7 @@ iryoken2_df <- pop_iryoken2 |>
   )
 
 pref_df <- pop_pref |>
-  select(pref_code, pref_name, population_2020) |>
+  dplyr::select(pref_code, pref_name, population_2020) |>
   left_join(seriesA_pref, by = "pref_code") |>
   left_join(seriesC_pref, by = "pref_code") |>
   mutate(
@@ -137,7 +140,7 @@ pref_df <- pop_pref |>
 
 pref_df |>
   arrange(desc(rate_care)) |>
-  select(pref_name, n_care, population_2020, rate_care) |>
+  dplyr::select(pref_name, n_care, population_2020, rate_care) |>
   head(5) |>
   knitr::kable(digits = 2, col.names = c("都道府県", "専門医数(care)", "人口(2020)", "人口10万対"))
 ```
@@ -239,11 +242,11 @@ iryoken2_listw <- nb2listw(iryoken2_nb, style = "W", zero.policy = TRUE)
 ``` r
 pref_sf <- st_read("data/geo/prefecture.geojson", quiet = TRUE)
 pref_sf$pref_code <- as.character(pref_sf$pref_code)
-pref_map <- pref_sf |> left_join(pref_df |> select(pref_code, rate_care), by = "pref_code")
+pref_map <- pref_sf |> left_join(pref_df |> dplyr::select(pref_code, rate_care), by = "pref_code")
 
 iryoken2_sf <- st_read("data/geo/iryoken2.geojson", quiet = TRUE)
 iryoken2_sf$area_code <- as.character(iryoken2_sf$area_code)
-iryoken2_map <- iryoken2_sf |> left_join(iryoken2_df |> select(area_code, rate_care), by = "area_code")
+iryoken2_map <- iryoken2_sf |> left_join(iryoken2_df |> dplyr::select(area_code, rate_care), by = "area_code")
 
 # 2枚の地図で共通に使う色の基準(0 〜 両方の最大値)。
 rate_care_limits <- c(0, max(c(pref_df$rate_care, iryoken2_df$rate_care), na.rm = TRUE))
@@ -402,7 +405,7 @@ nagasaki_neighbor_text <- if (length(nagasaki_neighbor_hotspots) > 0) {
 
 pref_lisa_gi |>
   arrange(desc(rate_care)) |>
-  select(pref_name, rate_care, quadrant, local_p, gi_z) |>
+  dplyr::select(pref_name, rate_care, quadrant, local_p, gi_z) |>
   head(8) |>
   knitr::kable(digits = 3, col.names = c("都道府県", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
@@ -425,7 +428,7 @@ pref_lisa_gi |>
 ``` r
 pref_hotspots <- pref_lisa_gi |> filter(gi_z > 1.96)
 pref_hotspots |>
-  select(pref_name, rate_care, gi_z) |>
+  dplyr::select(pref_name, rate_care, gi_z) |>
   knitr::kable(digits = 3, col.names = c("都道府県", "率", "Gi* z値"))
 ```
 
@@ -460,7 +463,7 @@ nagasaki <- iryoken2_lisa_gi |>
   arrange(desc(gi_z))
 
 nagasaki |>
-  select(area_name, rate_care, quadrant, local_p, gi_z) |>
+  dplyr::select(area_name, rate_care, quadrant, local_p, gi_z) |>
   knitr::kable(digits = 3, col.names = c("二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
@@ -520,7 +523,7 @@ tokyo <- iryoken2_lisa_gi |>
   arrange(desc(gi_z))
 
 tokyo |>
-  select(area_name, rate_care, quadrant, local_p, gi_z) |>
+  dplyr::select(area_name, rate_care, quadrant, local_p, gi_z) |>
   knitr::kable(digits = 3, col.names = c("二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
@@ -906,7 +909,7 @@ tokyo_sensitivity |>
 ``` r
 pref_lisa_gi |>
   filter(isolated) |>
-  select(pref_name, rate_care, quadrant, local_p, gi_z) |>
+  dplyr::select(pref_name, rate_care, quadrant, local_p, gi_z) |>
   knitr::kable(digits = 3, col.names = c("都道府県", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
@@ -918,7 +921,7 @@ pref_lisa_gi |>
 ``` r
 iryoken2_lisa_gi |>
   filter(isolated) |>
-  select(pref_name, area_name, rate_care, quadrant, local_p, gi_z) |>
+  dplyr::select(pref_name, area_name, rate_care, quadrant, local_p, gi_z) |>
   knitr::kable(digits = 3, col.names = c("都道府県", "二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
