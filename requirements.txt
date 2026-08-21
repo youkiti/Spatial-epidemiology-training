@@ -1,3 +1,12 @@
+# サイト(MkDocs)のビルドに必要な依存だけをここに置く。CI(.github/workflows/)が
+# install するのはこのファイルであり、CI が回す検算スクリプトは標準ライブラリだけで
+# 書かれているため追加の依存は要らない。
+#
+# scripts/ 配下のデータ取得・加工スクリプト(pandas / requests / openpyxl / pdfplumber を
+# 使うもの)の依存は requirements-data.txt にある。データを作り直すときはそちらも入れる。
+#
+# Windows ローカルでは PYTHONUTF8=1 を付けて実行すること(このファイルの日本語コメントを
+# pip が cp932 で読もうとして UnicodeDecodeError になる。しかも終了コード0を返すことがある)。
 mkdocs==1.6.1  # サイトジェネレータ本体(現在は mkdocs-material の推移的依存だが、CI再現性のため明示固定)
 mkdocs-material==9.7.6  # Material for MkDocs テーマ(検索・admonition等のプラグインを含む)
 mkdocs-git-revision-date-localized-plugin==1.5.3  # 各ページ末尾に最終更新日時を自動表示(git履歴からビルド時に埋め込み。要件定義書 §4.4)

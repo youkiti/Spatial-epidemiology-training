@@ -17,7 +17,7 @@
 ## 2部構成
 
 1. **概念パート**(全6章) — 理論・ビジュアル・具体例を並列に提示し、各章に自己チェッククイズと章末クイズが紐づきます。「読んで終わり」ではなく、理解確認を挟みながら進む設計です。
-2. **Rハンズオン**(4本) — 同じ概念を R で手を動かして再現します。①〜③は架空データのみで完結し、④は日本感染症学会の専門医名簿を題材にしたケーススタディです。
+2. **Rハンズオン**(本編3本+環境準備) — 同じ概念を R で手を動かして再現します。①は架空データだけで完結し、②③は日本感染症学会の専門医名簿を題材にした実データも使います。実データが何を数えていて何を数えていないかは、あわせて[ケーススタディのデータ(資料)](handson/04-case-study.md)にまとめています。
 
 ## 想定読者
 
@@ -27,5 +27,6 @@
 
 - [使い方](how-to-use.md) — 読み進め方とクイズの位置づけ
 - 概念パート: [章1 記述](concepts/ch1-descriptive.md) / [章2 空間重み行列](concepts/ch2-spatial-weights.md) / [章3 Global Moran's I](concepts/ch3-global-moran.md) / [章4 LISA / Gi\* / SaTScan](concepts/ch4-lisa-gi-satscan.md) / [章5 説明](concepts/ch5-explanatory.md) / [章6 落とし穴](concepts/ch6-pitfalls.md)
-- Rハンズオン: [⓪環境準備](handson/00-setup.md) / [①地図→Moran's I→LISA→Gi\*](handson/01-map-moran-lisa-gi.md) / [②CAR/BYM](handson/02-car-bym.md) / [③MAUPの実演](handson/03-maup.md) / [④ケーススタディ](handson/04-case-study.md)
+- Rハンズオン: [⓪環境準備](handson/00-setup.md) / [①地図→Moran's I→LISA→Gi\*](handson/01-map-moran-lisa-gi.md) / [②CAR/BYM](handson/02-car-bym.md) / [③MAUPの実演](handson/03-maup.md)
+- 資料: [ケーススタディのデータ](handson/04-case-study.md) — ②③が使う実データの制約
 - [このサイトについて](about.md) / [免責事項](disclaimer.md)

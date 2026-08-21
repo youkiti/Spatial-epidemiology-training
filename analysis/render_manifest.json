@@ -8,15 +8,15 @@
     "00-setup": {
       "source_rmd": {
         "path": "analysis/handson/00-setup.Rmd",
-        "sha256": "d66bd316874224f4584f067419b9d45af0af606c334eda15544002f9733c51fa"
+        "sha256": "7dba9106fb5f2cba4c88a270d44c5b8ec573a205ba00e4812736e52c8d822a3b"
       },
       "output_md": {
         "path": "docs/handson/00-setup.md",
-        "sha256": "74b91b170525412e4a718b51e1d3fcef529e4f15fc8c24cff2b0b7cf3616c5c0"
+        "sha256": "e69f8889bfb77d09066e5c21af3323c5e91edb0b58adec8702100f6f79cc2b70"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/00-setup.Rmd",
-        "sha256": "d66bd316874224f4584f067419b9d45af0af606c334eda15544002f9733c51fa"
+        "sha256": "7dba9106fb5f2cba4c88a270d44c5b8ec573a205ba00e4812736e52c8d822a3b"
       },
       "data_inputs": [
         {
@@ -96,15 +96,15 @@
     "02-car-bym": {
       "source_rmd": {
         "path": "analysis/handson/02-car-bym.Rmd",
-        "sha256": "d3379ce95d37e60f45935f064159b75b093d7704f6f447c113939e063a778b3a"
+        "sha256": "e3098ba5beba0a2443f68c6b87b97bda6e79c66a226b62145e6ac6dff670b5e3"
       },
       "output_md": {
         "path": "docs/handson/02-car-bym.md",
-        "sha256": "e9449902ceac177400717d6a387476807e6b915dae530987cc278e17304f43ff"
+        "sha256": "a6fce7e0bf8789c0f9d6ab2eaec6a318e18b149d2bfdb5e7f5471026ef8e6fcf"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/02-car-bym.Rmd",
-        "sha256": "d3379ce95d37e60f45935f064159b75b093d7704f6f447c113939e063a778b3a"
+        "sha256": "e3098ba5beba0a2443f68c6b87b97bda6e79c66a226b62145e6ac6dff670b5e3"
       },
       "data_inputs": [
         {
@@ -150,15 +150,15 @@
     "03-maup": {
       "source_rmd": {
         "path": "analysis/handson/03-maup.Rmd",
-        "sha256": "c24ad549bf2d442a98bafa5a0003c2ffc38d8e1a9576c248efaf63cc50558d58"
+        "sha256": "93ee0e4699153850c01425248936b56945c2e911c0ff4a9060a87b3dcd8bd015"
       },
       "output_md": {
         "path": "docs/handson/03-maup.md",
-        "sha256": "f2c7491048db8d933509d7a70c1c2774cafdb7a10818ea37a8018a59cdadce91"
+        "sha256": "eb1567f0c79130109f39474ca80b6927a2fc4209d7fe09f8cc3a294b18c4b851"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/03-maup.Rmd",
-        "sha256": "c24ad549bf2d442a98bafa5a0003c2ffc38d8e1a9576c248efaf63cc50558d58"
+        "sha256": "93ee0e4699153850c01425248936b56945c2e911c0ff4a9060a87b3dcd8bd015"
       },
       "data_inputs": [
         {

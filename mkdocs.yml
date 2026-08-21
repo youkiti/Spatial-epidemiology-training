@@ -93,6 +93,10 @@ nav:
       - handson/01-map-moran-lisa-gi.md
       - handson/02-car-bym.md
       - handson/03-maup.md
+  # 04-case-study.md はハンズオン本編ではなく、②③が使う実データの制約をまとめた資料。
+  # ファイルは handson/ に置いたまま(②③からの相対リンクが解決するため)、ナビゲーション上は
+  # 別グループにして「4本目のハンズオン」に見えないようにしている。
+  - 資料:
       - handson/04-case-study.md
   - このサイトについて:
       - about.md

@@ -1,0 +1,49 @@
+name: External link check
+
+# 外部リンク(https://…)の生存確認。**PRの必須ゲートにはしない。**
+# リンク先の一時的な不調・bot排除・レート制限で落ちることがあり、PRの内容と無関係に
+# マージがブロックされてしまうため。週次で回して、リンク腐れに気づける状態だけを保つ。
+#
+# 内部リンク(サイト内のページ・画像)は scripts/check_links.py が PR ごとに必須ゲートとして
+# 検査している。こちらは外部リンク専用。
+on:
+  schedule:
+    # 毎週月曜 00:17 UTC(= 月曜 09:17 JST)。分を0にしないのは、GitHub Actions の
+    # スケジュールが毎時0分に集中して遅延しやすいため。
+    - cron: "17 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  external-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - run: mkdocs build --strict
+
+      - name: Check external links with lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # site/ のビルド済みHTMLを見る(docs/ の Markdown ではなく)。実際に読者が
+          # クリックするURLと同じものを検査するため。
+          args: >-
+            --no-progress
+            --exclude-all-private
+            --max-retries 2
+            --accept 200,203,206,403,429
+            --scheme https
+            --scheme http
+            'site/**/*.html'
+          fail: true
