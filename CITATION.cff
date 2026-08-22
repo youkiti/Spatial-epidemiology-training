@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: >-
+  この教材・コードを利用・引用する場合は、以下の情報でクレジットを表示してください。
+  詳細な表示例は LICENSE を参照してください。
+title: "空間疫学入門 (Spatial-epidemiology-training)"
+type: software
+authors:
+  - alias: youkiti
+abstract: >-
+  一定の疫学の素養がある読者(公衆衛生大学院生、臨床疫学を学ぶ医療者、行政・研究機関で
+  保健統計を扱う担当者)を対象にした、空間疫学(地理疫学)の教材。概念パート(全6章)と、
+  同じ概念をRで再現するハンズオン(3本+環境準備)からなる。ケーススタディとして
+  日本感染症学会の専門医名簿データを用いた地域偏在の可視化を扱う。
+  ライセンスは対象物ごとに2種類ある: 教材(docs/ の文章・図・クイズ、documents/、
+  README、analysis/ の .Rmd の地の文とそこから生成される図)は CC BY 4.0、
+  コード(scripts/、analysis/ の .Rmd のコードチャンク、docs/assets/js/、.github/)は
+  MIT。どちらがどのファイルに適用されるかの正本は LICENSE / LICENSE-CODE。
+license:
+  - CC-BY-4.0
+  - MIT
+repository-code: "https://github.com/youkiti/Spatial-epidemiology-training"
+url: "https://youkiti.github.io/Spatial-epidemiology-training/"
+keywords:
+  - spatial epidemiology
+  - 空間疫学
+  - 地理疫学
+  - GIS
+  - public health
+  - biostatistics
+  - R
+  - MkDocs
+# 初回リリースはまだ行われていない(タグ0件)ため、version と date-released の
+# 2フィールドは意図的に書いていない(どちらも CFF 1.2.0 では optional)。
+# センチネル値(例: version 0.0.0 / date-released 1970-01-01)を書くと、
+# cffconvert や GitHub の "Cite this repository" がそれをそのまま
+# 引用文字列に出力してしまい(例: "youkiti (1970)... (version 0.0.0)")、
+# 公開ページに誤った引用情報が表示される。フィールドが無ければ GitHub は
+# その要素を出力しないため、「無い」方が「嘘の値がある」より正しい。
+# RELEASE.md 3.4節の手順にしたがって、タグを打つコミットで実際のバージョン
+# (先頭の "v" を除いた数字。例: "0.1.0")とリリース日(YYYY-MM-DD)を
+# この2フィールドとして追加してからコミット・タグ付けすること。
