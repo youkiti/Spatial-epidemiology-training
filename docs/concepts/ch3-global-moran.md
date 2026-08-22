@@ -28,7 +28,7 @@
 同じ大きさの4行5列のグリッドで、正の場合と負の場合を並べます。数値はどちらも架空の例(仮に有病率だとします)で、実際に計算した Moran's I の値ではありません。
 
 <figure>
-<svg viewBox="0 0 220 180" width="220" style="max-width:100%;height:auto" role="img">
+<svg viewBox="0 0 220 180" width="480" style="max-width:100%;height:auto" role="img">
 <title>正の空間自己相関の例。左上に高い値(12〜15)がまとまり、右上に低い値(2〜3)がまとまっている。</title>
 <rect x="10" y="10" width="40" height="40" fill="currentColor" fill-opacity="0.36" stroke="currentColor" stroke-opacity="0.3"/>
 <text x="30" y="35" text-anchor="middle" font-size="14" fill="currentColor">12</text>
@@ -75,7 +75,7 @@
 </figure>
 
 <figure>
-<svg viewBox="0 0 220 180" width="220" style="max-width:100%;height:auto" role="img">
+<svg viewBox="0 0 220 180" width="480" style="max-width:100%;height:auto" role="img">
 <title>負の空間自己相関の例。高い値(10)と低い値(2)が市松模様に交互配置されている。</title>
 <rect x="10" y="10" width="40" height="40" fill="currentColor" fill-opacity="0.45" stroke="currentColor" stroke-opacity="0.3"/>
 <text x="30" y="35" text-anchor="middle" font-size="14" fill="currentColor">10</text>
@@ -136,7 +136,7 @@ Global Moran's I は、大まかに言えば
 の相関を見ていると考えるとよいです。横軸に各地域の値、縦軸にその地域の空間ラグをとって散布図を描いたものを**Moran scatterplot**と呼び、Moran's I はこの散布図に引いた回帰直線の傾きにおおむね対応します。
 
 <figure>
-<svg viewBox="0 0 240 240" width="240" style="max-width:100%;height:auto" role="img">
+<svg viewBox="0 0 240 240" width="480" style="max-width:100%;height:auto" role="img">
 <title>Moran scatterplot の模式図。横軸は各地域の値、縦軸はその地域の空間ラグ(隣の平均)。右上がりの傾向は正の空間自己相関を示す。</title>
 <line x1="20" y1="120" x2="220" y2="120" stroke="currentColor" stroke-opacity="0.5"/>
 <line x1="120" y1="20" x2="120" y2="220" stroke="currentColor" stroke-opacity="0.5"/>
