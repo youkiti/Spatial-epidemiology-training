@@ -369,8 +369,15 @@
    slate 側は issue #33 の hover 再掲と同じ発想で var(--md-accent-fg-color)
    のまま再掲する(値は変えず 5.79:1 を維持し、accent の変更に自動追随させる)。
 
-   特異度: Material 側の `.md-nav__link:focus,.md-nav__link:hover` は
-   (0,2,0)。ここでのスキームガード付き上書きは(0,3,0)で確実に勝つ。
+   特異度(issue #71 の実測で追記・訂正): Material 側の該当ルールは
+   `.md-nav__link[for]:focus,.md-nav__link[for]:hover,
+    .md-nav__link[href]:focus,.md-nav__link[href]:hover` で(0,3,0)。
+   下のスキームガード付き上書きも(0,3,0)で同点だが、extra.css が後に読まれる
+   ため勝つ。ただし Material にはもう1本、
+   `@media screen and (max-width:76.234375em)` の中に
+   `.md-nav--primary .md-nav__item--active>.md-nav__link:hover` (0,4,0) があり、
+   ドロワーが出る幅では下の上書きが負ける。そちらは issue #71 の節で別途
+   (0,5,0) にして上回らせている。
    -------------------------------------------------------------------- */
 
 [data-md-color-scheme="default"] .md-nav__link:hover,
@@ -431,4 +438,122 @@
 
 [data-md-color-scheme="slate"] .md-search-result__meta {
   color: #a9abb4;
+}
+
+/* ====================================================================
+   ボタン(.md-button)のコントラスト是正 (issue #68)
+   ----------------------------------------------------------------------
+   クイズの「採点する」(.md-button--primary)と「選択をクリア」(.md-button)。
+   実測(2026-08-22、issue #64〜#66 を直した PR #70 マージ後の main で測定。
+   PR #70 はボタンを測っていなかったため、この4件は残っていた):
+
+     採点する   静止(両スキーム)  #fff on #009485          3.77:1  未達
+     クリア     静止・ライト      #009485 on #fff          3.77:1  未達
+     クリア     静止・ダーク      #009485 on slate地色     4.27:1  未達
+     両方       ホバー/フォーカス #fff on #ff6e42          2.78:1  未達
+
+   Materialの該当ルール(ビルド済み main.*.min.css を読んで確認):
+     .md-typeset .md-button          {color:var(--md-primary-fg-color)}   (0,2,0)
+     .md-typeset .md-button--primary {background-color:var(--md-primary-fg-color);
+                                      color:var(--md-primary-bg-color)}   (0,2,0)
+     .md-typeset .md-button:hover    {background-color:var(--md-accent-fg-color);
+                                      color:var(--md-accent-bg-color)}    (0,3,0)
+   静止は primary(#009485)由来で issue #64 と、ホバーは accent(#ff6e42)由来で
+   issue #65 と同じ原因。上の #64 節が .md-header / .md-tabs の地色だけを
+   下げる作りのため、同じ変数を見ているボタンには効いていない。
+
+   直し方:
+     1. 全ボタンの文字色をリンク色(--md-typeset-a-color。issue #33 で
+        ライト #00695c / ダーク #00ccb8 の AA を確認済み)に切り替える。
+        これで「選択をクリア」がライト 6.61 / ダーク 7.92 になる。
+     2. primary ボタンだけは白文字に戻す。1. のセレクタ(0,3,0)がMaterialの
+        .md-button--primary (0,2,0)より強く、そのままだと primary の白文字まで
+        上書きしてしまうため、同じ特異度(0,3,0)で後に書いて戻す(同点はソース順で
+        決まり、どちらもこのファイル内なので順序を自分で保証できる)。
+     3. primary ボタンの地色を、上の #64 節のヘッダーと同じ #00695c に下げる。
+        白文字で 6.61:1。`[data-md-color-primary="teal"]` ガードを付ける点も
+        #64 節に合わせる(パレットを変えたら上書きごと外れる)。
+     4. ホバー/フォーカスの地色・枠線を、本文リンクのホバーと同じ #bf360c に
+        下げる。白文字のままで 5.60:1。地色・文字色ともスキームに依存しないため
+        両スキームに同じ値を明示する。このルールは(0,4,0)で 1.〜3. のどれより
+        強く、ホバー時に静止色が勝つ事故(accent地色の上にリンク色の文字が乗る)を
+        防ぐ。--md-accent-fg-color 自体は書き換えない(共有変数のため)。
+
+   修正後の実測(2026-08-22、同じE2E): 採点する 静止 3.77 → 6.61(両スキーム)、
+   選択をクリア 静止 ライト 3.77 → 6.61 / ダーク 4.27 → 7.92、
+   両ボタンのホバー 2.78 → 5.60(両スキーム)。
+   ==================================================================== */
+[data-md-color-scheme="default"] .md-typeset .md-button,
+[data-md-color-scheme="slate"] .md-typeset .md-button {
+  color: var(--md-typeset-a-color);
+}
+
+[data-md-color-scheme="default"] .md-typeset .md-button--primary,
+[data-md-color-scheme="slate"] .md-typeset .md-button--primary {
+  color: var(--md-primary-bg-color);
+}
+
+[data-md-color-primary="teal"] .md-typeset .md-button--primary {
+  background-color: #00695c;
+  border-color: #00695c;
+}
+
+[data-md-color-scheme="default"] .md-typeset .md-button:focus,
+[data-md-color-scheme="default"] .md-typeset .md-button:hover,
+[data-md-color-scheme="slate"] .md-typeset .md-button:focus,
+[data-md-color-scheme="slate"] .md-typeset .md-button:hover {
+  background-color: #bf360c;
+  border-color: #bf360c;
+  color: #fff;
+}
+
+/* ====================================================================
+   ドロワー(狭い幅)にだけ残ったコントラスト未達 (issue #71)
+   ----------------------------------------------------------------------
+   上の #64・#65 節(PR #70)は幅1280pxで検証しており、Materialの該当ルールが
+   `@media screen and (max-width:76.234375em)`(約1219px 未満)の中にある2件が
+   残っていた。実測(2026-08-22、PR #70 マージ後の main、幅1000px と 320px で
+   ドロワーを開いて測定):
+
+     .md-nav__title[for=__drawer]              #fff on #009485      3.77  未達
+     アクティブ項目のホバー(ライト)            #ff6e42 on #fff      2.78  未達
+     アクティブ項目のホバー(ダーク)            #ff6e42 on slate地色 5.79  問題なし
+
+   1. ドロワーのタイトル: 上の #64 節は .md-header / .md-tabs の地色だけを
+      下げているため、同じ --md-primary-fg-color を地色に使うドロワーの
+      タイトルが teal 既定のまま残った。ヘッダーと同じ #00695c に下げる
+      (白文字で 6.61:1)。
+      あわせて .md-nav__source(ドロワー内のリポジトリ表示。素の地色は
+      --md-primary-fg-color--dark = #007a6c、白文字で 5.25:1 と AA は満たす)も
+      #004d40 に下げる。タイトルだけ下げると「下にあるリポジトリ表示の方が
+      明るい」とMaterial既定の明暗関係が反転するため(白文字で 9.83:1)。
+   2. アクティブ項目のホバー: 上の #65 節の上書きは(0,3,0)で、通常項目に対する
+      Materialのルール(0,3,0)には後読みで勝つが、メディアクエリ内の
+      `.md-nav--primary .md-nav__item--active>.md-nav__link:hover` (0,4,0)には
+      負ける。ここで(0,5,0)にして上回らせる。値は #65 節と同じ(ライトは
+      #bf360c、ダークは var(--md-accent-fg-color) を再掲して accent に追随)。
+      メディアクエリで囲っていないのは、デスクトップ幅でも #65 節と同じ色に
+      なるだけで実効的な差が無く、囲うと「どの幅で有効か」を二重管理することに
+      なるため。
+
+   修正後の実測(2026-08-22、幅1000px / 320px でドロワーを開いて再測定):
+   ドロワーのタイトル 3.77 → 6.61(両スキーム)、リポジトリ表示 5.25 → 9.83、
+   アクティブ項目のホバー ライト 2.78 → 5.60 / ダーク 5.79 据え置き。
+   ==================================================================== */
+[data-md-color-primary="teal"] .md-nav--primary .md-nav__title[for="__drawer"] {
+  background-color: #00695c;
+}
+
+[data-md-color-primary="teal"] .md-nav--primary .md-nav__source {
+  background-color: #004d40;
+}
+
+[data-md-color-scheme="default"] .md-nav--primary .md-nav__item--active > .md-nav__link:focus,
+[data-md-color-scheme="default"] .md-nav--primary .md-nav__item--active > .md-nav__link:hover {
+  color: #bf360c;
+}
+
+[data-md-color-scheme="slate"] .md-nav--primary .md-nav__item--active > .md-nav__link:focus,
+[data-md-color-scheme="slate"] .md-nav--primary .md-nav__item--active > .md-nav__link:hover {
+  color: var(--md-accent-fg-color);
 }
