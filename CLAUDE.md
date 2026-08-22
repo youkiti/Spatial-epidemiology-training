@@ -265,6 +265,7 @@ Global/Local Moran's I と Gi\* は `spdep` だけで完結する（`moran.test`
 - **ライセンス** = 教材（`docs/` の文章・図・クイズ、`documents/`、`README.md`、`analysis/` の `.Rmd` の地の文とそこから生成される図）は **CC BY 4.0**、コード（`scripts/`、`analysis/` の `.Rmd`（コードチャンク）、`docs/assets/js/`、`.github/`）は **MIT**。`.Rmd` はファイル単体では区分できず、コードチャンクと地の文でライセンスが分かれる（issue #46 で確定）。外部データ由来のファイルは各出典の利用条件に従う。正本は `LICENSE` / `LICENSE-CODE`、読者向けの記載は `docs/about.md`。**CC BY 4.0 の legal code 全文はリポジトリに収録していない**（URL で参照する形にした。クラウドセッションからは creativecommons.org が egress proxy で遮断されており全文を取得できなかったため。全文を同梱したくなったらローカルで貼ること）
 - **統合ケーススタディ（旧ハンズオン④）は作らない** = `docs/handson/04-case-study.md` は実データの制約を開示する**資料ページ**であり、ハンズオン本編ではない。3段階の型は①〜③が段階ごとに扱う（[カリキュラム設計](documents/カリキュラム設計.md) §4.4 が経緯の正本）
 - **簡略化済み（表示専用）GeoJSON を隣接判定に使ってよいか** = 使ってよい。`snap=0` と `snap=0.0001`（座標丸め幅と同程度）で queen contiguity の隣接ペアが完全一致した（1,558件、集合差0件）ため、0.0001度丸めは隣接判定に影響していない。本採用は `snap=0`。測定手順と全診断は `scripts/build_geo.R` と `data/geo/adjacency_diagnostics.md`
+- **施設単位CSV（`specialists_facility.csv` / `facility_geo_audit.csv`）は公開リポジトリに保持し続ける**（issue #47 で A に確定、2026-08-21 の issue コメントが承認記録）。理由: 名簿自体が公開情報であり、これらのファイルによる集計は公開情報の再掲という整理。氏名列は含まないが、氏名が無いことは再識別リスクが無いことと同義ではない（施設名と公開名簿PDFを突合すれば個人単位の推定が可能な場合がある）ため、**再識別に関する注意は定性的にとどめ、`n_specialists=1` の行数・割合のような定量値は文書に追加しない**方針とした。正本は `data/processed/README.md`「施設単位データの公開範囲と利用上の注意」節と `LICENSE` §3
 
 ## 未決定事項（実装前にユーザーに確認する）
 
