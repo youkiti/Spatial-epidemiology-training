@@ -116,10 +116,15 @@ forward-fillがページ境界でズレていれば、次の都道府県ブロ�
 再生成するには:
 
 ```bash
+export NEIGHBOR_REPO=../visualize-regional-medical-care-for-2040
 python scripts/build_population.py
 ```
 
-(`data/geo/iryoken2.geojson` との area_code 突合を行うため、先に
+(入力の `area_basic.csv`・`prefecture_basic.csv` は隣リポジトリの出力なので、
+その置き場所を環境変数 `NEIGHBOR_REPO` で渡す。ファイル単位で指定したいときは
+`--area-basic`・`--prefecture-basic` を使う。どちらも無い場合は入手手順を
+案内して非ゼロ終了する。issue #51
+また `data/geo/iryoken2.geojson` との area_code 突合を行うため、先に
 `Rscript scripts/build_geo.R` を実行しておくこと。)
 
 ### `population_iryoken2.csv`
@@ -161,14 +166,17 @@ python scripts/build_population.py
 再生成するには:
 
 ```bash
+export NEIGHBOR_REPO=../visualize-regional-medical-care-for-2040
 python scripts/fetch_census_age.py
 python scripts/build_population_age.py
 ```
 
 (`build_population_age.py` は隣リポジトリ visualize-regional-medical-care-for-2040
 の `data/processed/iryoken2_A38-20.geojson`・`area_geo_join.csv`・
-`data/reference/mie_area_municipalities.csv` を読む。パスは
-`--a38-geojson`・`--area-geo-join`・`--mie-csv` で変更できる。
+`data/reference/mie_area_municipalities.csv` を読む。置き場所は環境変数
+`NEIGHBOR_REPO` で渡し、ファイル単位で指定したいときは
+`--a38-geojson`・`--area-geo-join`・`--mie-csv` を使う。どちらも無い場合は
+入手手順を案内して非ゼロ終了する。issue #51
 `python scripts/build_population.py` で `population_iryoken2.csv`・
 `population_prefecture.csv` の基礎列(総人口)が先に存在している必要がある。)
 

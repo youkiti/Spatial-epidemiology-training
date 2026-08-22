@@ -14,10 +14,15 @@ issue #4 で要求された診断結果の要約のみを記す。
 再生成するには:
 
 ```bash
+export NEIGHBOR_REPO=../visualize-regional-medical-care-for-2040
 "/c/Program Files (x86)/R/R-4.5.2/bin/Rscript.exe" scripts/build_geo.R
 ```
 
-(`Rscript` は Git Bash の PATH に無いため、フルパスで呼ぶ必要がある。)
+(`Rscript` は Git Bash の PATH に無いため、フルパスで呼ぶ必要がある。
+入力の境界データは隣リポジトリの出力なので、その置き場所を環境変数
+`NEIGHBOR_REPO` で渡す。ファイル単位で指定したいときは
+`--area-boundaries`・`--prefecture-boundaries` を使う。どちらも無い場合は
+入手手順を案内して非ゼロ終了する。issue #51)
 
 ## この境界データは「表示専用」であることの明示
 

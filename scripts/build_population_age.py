@@ -71,16 +71,23 @@ from typing import Dict, List, Optional, Tuple
 import openpyxl
 import pandas as pd
 
+# 同じ scripts/ に置いた共有モジュールを読む(既存スクリプトと同じ流儀)。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lib_neighbor_repo  # noqa: E402 (パス追加の後に import する必要がある)
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 DEFAULT_CENSUS_XLSX = Path("data/raw/census_age_2020_table2-7.xlsx")
-NEIGHBOR_REPO = Path("C:/Users/youki/codes/visualize-regional-medical-care-for-2040")
-DEFAULT_A38_GEOJSON = NEIGHBOR_REPO / "data/processed/iryoken2_A38-20.geojson"
-DEFAULT_AREA_GEO_JOIN = NEIGHBOR_REPO / "data/processed/area_geo_join.csv"
-DEFAULT_MIE_CSV = NEIGHBOR_REPO / "data/reference/mie_area_municipalities.csv"
+
+# 隣リポジトリ側の相対パス。ルートは環境変数 NEIGHBOR_REPO か個別の引数で
+# 受け取る(issue #51。開発機の絶対パスを既定値にしない)。
+NEIGHBOR_A38_GEOJSON = "data/processed/iryoken2_A38-20.geojson"
+NEIGHBOR_AREA_GEO_JOIN = "data/processed/area_geo_join.csv"
+NEIGHBOR_MIE_CSV = "data/reference/mie_area_municipalities.csv"
+
 DEFAULT_AREA_CSV = Path("data/processed/population_iryoken2.csv")
 DEFAULT_PREF_CSV = Path("data/processed/population_prefecture.csv")
 DEFAULT_OUT_DIR = Path("data/processed")
@@ -453,9 +460,24 @@ def age_row_values(total: int, bands: List[int], unknown: int, pop65plus: int) -
 def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="年齢構成人口(issue #28)を整備する")
     parser.add_argument("--census-xlsx", type=Path, default=DEFAULT_CENSUS_XLSX)
-    parser.add_argument("--a38-geojson", type=Path, default=DEFAULT_A38_GEOJSON)
-    parser.add_argument("--area-geo-join", type=Path, default=DEFAULT_AREA_GEO_JOIN)
-    parser.add_argument("--mie-csv", type=Path, default=DEFAULT_MIE_CSV)
+    parser.add_argument(
+        "--a38-geojson",
+        type=Path,
+        default=None,
+        help=f"未指定なら $NEIGHBOR_REPO/{NEIGHBOR_A38_GEOJSON}",
+    )
+    parser.add_argument(
+        "--area-geo-join",
+        type=Path,
+        default=None,
+        help=f"未指定なら $NEIGHBOR_REPO/{NEIGHBOR_AREA_GEO_JOIN}",
+    )
+    parser.add_argument(
+        "--mie-csv",
+        type=Path,
+        default=None,
+        help=f"未指定なら $NEIGHBOR_REPO/{NEIGHBOR_MIE_CSV}",
+    )
     parser.add_argument("--area-csv", type=Path, default=DEFAULT_AREA_CSV, help="既存 population_iryoken2.csv")
     parser.add_argument("--pref-csv", type=Path, default=DEFAULT_PREF_CSV, help="既存 population_prefecture.csv")
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR)
@@ -465,16 +487,33 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 def main(argv: List[str]) -> int:
     args = parse_args(argv)
 
-    for label, path in [
-        ("census xlsx", args.census_xlsx),
-        ("A38 geojson", args.a38_geojson),
-        ("area_geo_join.csv", args.area_geo_join),
-        ("mie_area_municipalities.csv", args.mie_csv),
-        ("population_iryoken2.csv", args.area_csv),
-        ("population_prefecture.csv", args.pref_csv),
+    # 隣リポジトリ由来の3入力は、個別指定 → $NEIGHBOR_REPO の順に解決する。
+    # どちらも無ければ入手手順を案内して止める(issue #51)。
+    try:
+        args.a38_geojson = lib_neighbor_repo.resolve(
+            args.a38_geojson, NEIGHBOR_A38_GEOJSON, "--a38-geojson"
+        )
+        args.area_geo_join = lib_neighbor_repo.resolve(
+            args.area_geo_join, NEIGHBOR_AREA_GEO_JOIN, "--area-geo-join"
+        )
+        args.mie_csv = lib_neighbor_repo.resolve(args.mie_csv, NEIGHBOR_MIE_CSV, "--mie-csv")
+    except lib_neighbor_repo.NeighborRepoNotConfigured as exc:
+        print(f"エラー: {exc}", file=sys.stderr)
+        return 1
+
+    # 隣リポジトリ由来の入力は、見つからないときに入手手順も併せて案内する。
+    for label, path, hint in [
+        ("census xlsx", args.census_xlsx, None),
+        ("A38 geojson", args.a38_geojson, (NEIGHBOR_A38_GEOJSON, "--a38-geojson")),
+        ("area_geo_join.csv", args.area_geo_join, (NEIGHBOR_AREA_GEO_JOIN, "--area-geo-join")),
+        ("mie_area_municipalities.csv", args.mie_csv, (NEIGHBOR_MIE_CSV, "--mie-csv")),
+        ("population_iryoken2.csv", args.area_csv, None),
+        ("population_prefecture.csv", args.pref_csv, None),
     ]:
         if not path.exists():
             print(f"エラー: {label} が見つかりません: {path}", file=sys.stderr)
+            if hint is not None:
+                print(lib_neighbor_repo.guidance(*hint), file=sys.stderr)
             return 1
 
     print(f"census xlsx を読み込み中: {args.census_xlsx}")
