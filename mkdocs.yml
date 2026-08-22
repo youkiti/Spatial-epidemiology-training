@@ -70,13 +70,18 @@ copyright: "空間疫学入門 — 本サイトはユーザーログを一切収
 extra_css:
   - assets/css/extra.css
 
-# 読み込み順は依存順(storage.js → quiz.js → progress.js)で固定する。
-# quiz.js/progress.js は先に読み込まれた storage.js の window.SPEPI を前提とするため、
-# 順序を変えないこと(ai-kotohajime の extra_javascript の並び順を踏襲、issue #3)。
+# 読み込み順は依存順(storage.js → quiz.js → progress.js → certificate.js)で固定する。
+# quiz.js/progress.js/certificate.js は先に読み込まれた storage.js の window.SPEPI を
+# 前提とするため、順序を変えないこと(ai-kotohajime の extra_javascript の並び順を踏襲、
+# issue #3)。certificate.js も同じ理由(window.SPEPI への依存)で storage.js より後に置く
+# 必要があるが、quiz.js/progress.js との前後関係には制約が無い
+# (addEventListener("spepi:passed", ...)はパース時にリスナを登録するだけで、
+# dispatchEvent側であるquiz.jsの読み込み順とは無関係。issue #73)。末尾に置く配置は変えない。
 extra_javascript:
   - assets/js/storage.js
   - assets/js/quiz.js
   - assets/js/progress.js
+  - assets/js/certificate.js
 
 nav:
   - ホーム: index.md
@@ -98,6 +103,7 @@ nav:
   # 別グループにして「4本目のハンズオン」に見えないようにしている。
   - 資料:
       - handson/04-case-study.md
+  - 修了証: certificate.md
   - このサイトについて:
       - about.md
       - disclaimer.md
