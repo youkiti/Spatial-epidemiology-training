@@ -2,7 +2,7 @@
 
 このプロジェクトの変更履歴。形式は [Keep a Changelog](https://keepachangelog.com/ja/1.0.0/) に、バージョン番号は [Semantic Versioning](https://semver.org/lang/ja/) に準拠する。
 
-**注記: このリポジトリはまだタグを1件も打っていない。** 初回リリース `v0.1.0` はまだ存在しないため、これまでの変更はすべて下記の `[Unreleased]` にまとめてある。初回リリースのタグを打つときは、`RELEASE.md` の手順（3.4節）にしたがって `## [Unreleased]` の見出しを `## [0.1.0] - YYYY-MM-DD` に書き換え、新しい空の `## [Unreleased]` をその上に追加すること。
+**注記: このリポジトリはまだタグを1件も打っていない。** 初回リリース `v0.1.0` はまだ存在しないため、これまでの変更はすべて下記の `[Unreleased]` にまとめてある。初回リリースのタグを打つときは、`RELEASE.md` の手順（3.3節）にしたがって `## [Unreleased]` の見出しを `## [0.1.0] - YYYY-MM-DD` に書き換え、新しい空の `## [Unreleased]` をその上に追加すること。
 
 ## [Unreleased]
 

@@ -77,7 +77,18 @@ pip-audit -r requirements.txt
 pip-audit -r requirements-data.txt
 ```
 
-既知脆弱性がゼロであることを確認する。新たな脆弱性が出ていた場合は、そのままリリースするか、修正してからにするかを判断する（過去に issue #45 でこのパスから3件見つかり #60 で解消済み。同種の再発が無いかを見る目的）。
+**合格条件は「ゼロ件」ではなく「受容済みの例外を除いてゼロ件」。** 受容している例外は次の1つだけ:
+
+- パッケージ `cryptography`（`requirements-data.txt` が固定する版 `46.0.3`）、**Windows ARM64 限定**（環境マーカー `platform_system == "Windows" and platform_machine == "ARM64"`）。advisory は `PYSEC-2026-35` / `PYSEC-2026-36` / `PYSEC-2026-2141` / `PYSEC-2026-3552` / `PYSEC-2026-3553` / `PYSEC-2026-3554` / `GHSA-537c-gmf6-5ccf` の**ユニーク7件**。`pip-audit` の出力は `PYSEC-2026-35` と `PYSEC-2026-36` がそれぞれ2行ずつ重複して出るため見かけ9行になるが、advisory ID としては7種類なので数えて混乱しないこと。
+
+**これ以外の脆弱性が1件でも出たら失敗として扱う。** ここで受容の範囲を広げない — 新しいパッケージや別バージョンの脆弱性が出た場合は、そのままリリースするか修正してからにするかを都度判断する。
+
+実行環境によって結果が変わることに注意する:
+
+- **Windows ARM64** で `pip-audit -r requirements-data.txt` を実行すると、上記の環境マーカーが真になり、`cryptography` の既知脆弱性7件が報告される。**これは想定どおりの結果であり、失敗ではない。**
+- **Linux や x86_64 Windows** ではこの環境マーカーが偽になるため `cryptography` は監査対象にすら入らず、`requirements-data.txt` も0件になる。CI の `weekly-deps.yml` の `pip-audit` ジョブは `ubuntu-latest` で走るため、通常はこちら（0件）を見ることになる。
+
+受容の理由の要約: `cryptography` は 46.0.4 以降 win_arm64 wheel を配布しなくなったため 46.0.3 に据え置いている。このパイプラインで `cryptography` が使われるのは pdfminer.six が暗号化PDFをローカルで復号する経路のみで、名簿PDFは暗号化されておらず、`requests` の TLS 通信にも使われない。**受容の正本は `requirements-data.txt` の該当コメント（28〜47行目）。** これとは別に、requests / pdfminer.six 経由で見つかっていた既知脆弱性3件は issue #45 → PR #60 で版を上げて**修正済み**（受容ではない）。上記の `cryptography` 7件だけが「修正」ではなく「Windows ARM64 限定で受容」という決定であることを混同しないこと。
 
 ### 2.3 ブラウザ E2E（Playwright、ローカル）
 
@@ -89,12 +100,14 @@ CI はブラウザを動かさないため、UI の実際の振る舞いはロ�
 - `overrides/404.html` のリンクは**ルート相対**（`/Spatial-epidemiology-training/...`）で書かれている。404 ページのリンクを検証するときは、`mkdocs serve` の既定の `/`（ルート）配下ではなく、**本番と同じベースパス（`/Spatial-epidemiology-training/`）配下で配信する**必要がある。`mkdocs serve` はこのベースパスを再現できないため使えない。**先に `mkdocs build --strict` で `site/` を作ってから**、次の最小サーバーで配信する。
 
 ```python
-# serve_basepath.py — site/ を本番と同じベースパス配下で配信する
+# serve_basepath.py — site/ を本番と同じベースパス配下で配信する(404ページも本番相当)
 import functools
 import http.server
+import pathlib
 import sys
 
 PREFIX = "/Spatial-epidemiology-training"
+DIRECTORY = "site"
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -103,12 +116,31 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             path = path[len(PREFIX):] or "/"
         return super().translate_path(path)
 
+    def send_error(self, code, message=None, explain=None):
+        # 存在しないURLで SimpleHTTPRequestHandler 標準の素っ気ない404本文ではなく、
+        # site/404.html(overrides/404.html 由来)をステータス404のまま返す。
+        # これをやらないと「404ページに遷移してそこからルート相対リンクをたどる」という
+        # 本番の流れを検証できない。
+        if code == 404:
+            try:
+                body = (pathlib.Path(DIRECTORY) / "404.html").read_bytes()
+            except OSError:
+                return super().send_error(code, message, explain)
+            self.send_response(404)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+            return
+        super().send_error(code, message, explain)
+
 
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
-    handler = functools.partial(Handler, directory="site")
+    handler = functools.partial(Handler, directory=DIRECTORY)
     with http.server.ThreadingHTTPServer(("127.0.0.1", port), handler) as httpd:
-        print(f"Serving site/ at http://127.0.0.1:{port}{PREFIX}/")
+        print(f"Serving {DIRECTORY}/ at http://127.0.0.1:{port}{PREFIX}/")
         httpd.serve_forever()
 
 
@@ -122,7 +154,7 @@ python serve_basepath.py 8765
 # ブラウザ／Playwright から http://127.0.0.1:8765/Spatial-epidemiology-training/ を開く
 ```
 
-`translate_path()` で先頭の `PREFIX` を剥がしてから `SimpleHTTPRequestHandler` の標準解決に渡しているだけの最小実装。**このスクリプトを Git Bash から実行するときの罠は「4. 環境上の罠」を参照**（`PREFIX` のような先頭が `/` の文字列を Git Bash 経由でコマンド引数として渡すと壊れる。このスクリプトは `PREFIX` をファイル内に直書きしているため影響を受けないが、同種の作業で `curl` 等に `/Spatial-epidemiology-training/...` を引数として渡すときは注意する）。
+`translate_path()` で先頭の `PREFIX` を剥がしてから `SimpleHTTPRequestHandler` の標準解決に渡し、`send_error()` で404のときだけ `site/404.html` の中身をステータス404のまま返す。**このスクリプトを Git Bash から実行するときの罠は「4. 環境上の罠」を参照**（`PREFIX` のような先頭が `/` の文字列を Git Bash 経由でコマンド引数として渡すと壊れる。このスクリプトは `PREFIX` をファイル内に直書きしているため影響を受けないが、同種の作業で `curl` 等に `/Spatial-epidemiology-training/...` を引数として渡すときは注意する）。
 
 確認項目:
 
@@ -133,7 +165,7 @@ python serve_basepath.py 8765
    - クイズの採点結果ボックス内のリンク（`.spepi-quiz-incorrect-list a` など）は独自の色経路を持つため、**解答して採点まで進めないと DOM に現れない**。
    - ホバー色は Material が約0.25秒かけて遷移するため、`hover()` 直後に読むと遷移途中の値を掴む。**400ms 待ってから読む。**
 4. **レスポンシブ**: ビューポート幅 320px / 768px / 1440px で、本文の横スクロールが発生しないこと・表示崩れが無いことを確認する。
-5. **404 ページ**: `overrides/404.html` 内のリンクをクリックして正しく遷移することを確認する（上記の配信方法を踏まえて検証する）。
+5. **404 ページ**: 存在しない URL（例: `http://127.0.0.1:8765/Spatial-epidemiology-training/no-such-page/`）を直接踏んで、ステータス404で `overrides/404.html` 由来のページが表示されることを確認したうえで、そのページ内のリンクをクリックして正しく遷移することを確認する（上記サーバーの `send_error()` 対応により、この一連の流れを本番と同じ形で再現できる）。
 
 Playwright はこのリポジトリの `requirements.txt` / `requirements-data.txt` には含めていない（サイト運用やデータ整備に必須の依存ではなく、リリース前手動 QA 専用のツールのため）。作業者のローカルに一時的に `pip install playwright && playwright install chromium`（または同等の Node 版）を用意して使う。
 
@@ -160,22 +192,14 @@ gh run view <run-id> --log
 
 **このセクションのコマンドはリリース作業者が実行する。**
 
+**この節の手順は「検査した SHA」「タグを打つ SHA」「`origin/main` の SHA」の3つを最後まで一致させることを軸に組んである。** リリース準備のための変更（`CITATION.cff` / `CHANGELOG.md` の更新）を先に `main` へ反映してから対象 SHA を固定し、その固定 SHA に対して1・2節の全検査を1回だけ正式に行う — その後は検査結果を汚す変更を何も加えずにタグを打つ。順序を逆にする（先に検査して後から準備コミットを載せる）と、検査した内容とタグが指すコミットがズレる。
+
 ### 3.1 前提条件の確認
 
 - P1（最優先）に分類された issue がすべて閉じている、または残存リスクを文書（`documents/納品前監査レポート.md` 等）で受容していることを確認する。
-- 1・2 節の全検査（CI 7ゲート + R 全件レンダリング + `pip-audit` + E2E + 週次ワークフロー）が緑であることを確認する。
+- 1・2 節の検査一式（CI 7ゲート + R 全件レンダリング + `pip-audit` + E2E + 週次ワークフロー）が、この時点の作業ブランチで通ることを一通り確認しておく。**ただしこれは準備確認であり、正式な合格記録ではない。** 正式な検査は 3.5 で、実際にタグを打つ SHA に対して行う。
 
-### 3.2 リリース対象の SHA を固定し、その SHA で再検査する
-
-```bash
-git checkout main
-git pull origin main
-git rev-parse HEAD    # このコミットがリリース対象
-```
-
-この SHA（作業ツリーの状態）で 1・2 節の検査一式をもう一度通す。ブランチ保護や PR マージのタイミングで `main` が動いている可能性があるため、「最後に検査した SHA」と「タグを打つ SHA」が一致していることを保証するのが目的。
-
-### 3.3 バージョン番号の方針
+### 3.2 バージョン番号の方針
 
 [Semantic Versioning](https://semver.org/lang/ja/) に準拠した `vMAJOR.MINOR.PATCH` を使う。教材という性質上「API の破壊的変更」は厳密には無いが、目安は次のとおり:
 
@@ -183,11 +207,11 @@ git rev-parse HEAD    # このコミットがリリース対象
 - **MINOR**: 新しい章・ハンズオン・データセットの追加など、内容の追加
 - **PATCH**: 誤字修正、リンク切れ修正、CI・依存関係の整備など、内容の追加を伴わない修正
 
-**タグは現時点で1件も無い。初回リリースは `v0.1.0` とする**（`1.0.0` ではなく `0.1.0` から始めるのは、監修体制など未決事項が残っている段階のため。[要件定義書](documents/要件定義書.md) §9 参照）。
+**タグは現時点で1件も無い。初回リリースは `v0.1.0` とする**（`1.0.0` ではなく `0.1.0` から始めるのは、監修体制など未決事項が残っている段階のため。[要件定義書](documents/要件定義書.md) §9 参照）。バージョン番号はこの後の準備コミット（3.3節）で必要になるため、ここで確定させておく。
 
-### 3.4 `CITATION.cff` と `CHANGELOG.md` を更新してコミットする
+### 3.3 リリース準備コミットを作り、`main` に反映する
 
-`CITATION.cff` には現時点で `version` と `date-released` の2フィールドが**無い**（未リリースの段階で書くと、cffconvert や GitHub の "Cite this repository" がセンチネル値をそのまま引用文字列に出してしまうため、意図的に省略してある）。タグ付けの**前**に次を行う。
+`CITATION.cff` には現時点で `version` と `date-released` の2フィールドが**無い**（未リリースの段階で書くと、cffconvert や GitHub の "Cite this repository" がセンチネル値をそのまま引用文字列に出してしまうため、意図的に省略してある）。タグ付けの**前**に、次の変更を `main` へ反映する。
 
 1. `CITATION.cff` に `version:` と `date-released:` の2行を**追加**する。例:
 
@@ -198,9 +222,30 @@ git rev-parse HEAD    # このコミットがリリース対象
 
    `version` は先頭の `v` を付けない数字表記（CFF の慣例）。`date-released` は実際のリリース日（`YYYY-MM-DD`）。追加位置はファイル末尾の既存コメントの直後でよい。
 2. `CHANGELOG.md` の `## [Unreleased]` 見出しを `## [0.1.0] - YYYY-MM-DD` に書き換え、新しい空の `## [Unreleased]` 見出しをその上に追加する（Keep a Changelog の運用）。
-3. 変更をコミットする（例: `git commit -m "chore: prepare v0.1.0 release"`）。
+3. 作業ブランチを作って変更をコミットし（例: `git commit -m "chore: prepare v0.1.0 release"`）、**PR を作って `main` にマージする。** このリポジトリは `main` への直接 push ではなく PR 運用のため、ここも例外にしない。
+4. マージ後、そのマージコミットに対して CI（7ゲート）が緑であることを `gh pr checks` 等で確認する。
 
-### 3.5 注釈付きタグを打つ
+### 3.4 リリース対象の SHA を固定する
+
+```bash
+git checkout main
+git pull origin main
+git rev-parse HEAD    # このコミットがリリース対象
+```
+
+**この SHA が 3.3 の準備コミット（`CITATION.cff` の `version`/`date-released` 追加、`CHANGELOG.md` の見出し書き換え）を含んでいることを確認する**（例: `git show --stat HEAD` や `git log -1` で直前のマージ内容を見る）。含まれていなければ `git pull` し忘れているか、PR がまだマージされていない。
+
+### 3.5 固定した SHA で1・2節の全検査を実行する
+
+3.4 で固定した SHA（作業ツリーの状態）に対して、1・2節の検査一式（CI 7ゲート + R 全件レンダリング + `pip-audit` + E2E + 週次ワークフロー）を通す。**これがこの節における唯一の「正式な」検査であり、これより後はタグを打つところまで作業ツリーに変更を加えない。**
+
+### 3.6 注釈付きタグを打つ
+
+タグを打つ直前に、次の3つの SHA が一致していることを確認する:
+
+- 3.5 で検査した SHA（3.4 で `git rev-parse HEAD` で確認したもの）
+- これから打つタグが指す SHA（現在の `HEAD`）
+- `origin/main` の SHA（`git ls-remote origin main` で確認できる。ローカルの `main` と食い違っていたら、誰かが割り込みで `main` を更新した可能性があるため 3.4 からやり直す）
 
 ```bash
 git tag -a v0.1.0 -m "v0.1.0"
@@ -209,7 +254,7 @@ git push origin v0.1.0
 
 軽量タグ（`-a` 無し）ではなく**注釈付きタグ**を使う。誰がいつ何のメッセージでタグを打ったかが記録に残るため。
 
-### 3.6 `git archive` で配布アーカイブを作る
+### 3.7 `git archive` で配布アーカイブを作る
 
 ```bash
 # Git Bash / WSL — zip
@@ -227,7 +272,7 @@ git archive --format=tar.gz \
 
 `--prefix` を付けることで、展開したときにファイルがカレントディレクトリへ直接ばら撒かれず、`Spatial-epidemiology-training-v0.1.0/` という単一フォルダの下に収まる。
 
-### 3.7 SHA-256 チェックサムを生成する
+### 3.8 SHA-256 チェックサムを生成する
 
 ```bash
 # Git Bash / WSL
@@ -242,12 +287,17 @@ Get-FileHash ".\spatial-epidemiology-training-v0.1.0.zip" -Algorithm SHA256 |
     Select-Object -ExpandProperty Hash |
     Out-File -Encoding ascii ".\spatial-epidemiology-training-v0.1.0.zip.sha256"
 
+Get-FileHash ".\spatial-epidemiology-training-v0.1.0.tar.gz" -Algorithm SHA256 |
+    Select-Object -ExpandProperty Hash |
+    Out-File -Encoding ascii ".\spatial-epidemiology-training-v0.1.0.tar.gz.sha256"
+
 Get-Content ".\spatial-epidemiology-training-v0.1.0.zip.sha256"
+Get-Content ".\spatial-epidemiology-training-v0.1.0.tar.gz.sha256"
 ```
 
-### 3.8 リリースノートを添えて GitHub Release を作る
+### 3.9 リリースノートを添えて GitHub Release を作る
 
-`CHANGELOG.md` の該当バージョンの節（3.4 で書き換えた `## [0.1.0] - YYYY-MM-DD` 以下、次のバージョン見出しの手前まで）を、エディタで手元にコピーしてリリースノート用の一時ファイル（例: `release-notes-v0.1.0.md`）を作る。**自動抽出のワンライナーは使わない** — `sed` の範囲パターン（開始行〜次の `## [` 見出し）は、初回リリースのように対象バージョンの後にもうバージョン見出しが無い場合、終端が EOF まで伸びてしまい、そこにさらに末尾1行を削る処理を重ねると本文の最終行が欠ける。手でコピーする方が確実。
+`CHANGELOG.md` の該当バージョンの節（3.3 で書き換えた `## [0.1.0] - YYYY-MM-DD` 以下、次のバージョン見出しの手前まで）を、エディタで手元にコピーしてリリースノート用の一時ファイル（例: `release-notes-v0.1.0.md`）を作る。**自動抽出のワンライナーは使わない** — `sed` の範囲パターン（開始行〜次の `## [` 見出し）は、初回リリースのように対象バージョンの後にもうバージョン見出しが無い場合、終端が EOF まで伸びてしまい、そこにさらに末尾1行を削る処理を重ねると本文の最終行が欠ける。手でコピーする方が確実。
 
 ```bash
 gh release create v0.1.0 \
