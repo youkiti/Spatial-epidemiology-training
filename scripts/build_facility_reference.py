@@ -45,8 +45,9 @@ P04)側の座標そのものが丸められている行が実際に混在する(
 
 ## 出典(逐語移植した箇所)
 
-`c:/Users/youki/codes/visualize-regional-medical-care-for-2040`
-(同一著者のリポジトリ)の以下を移植している。各関数のdocstringにも個別に
+隣リポジトリ visualize-regional-medical-care-for-2040
+(同一著者。https://github.com/youkiti/visualize-regional-medical-care-for-2040)
+の以下を移植している。各関数のdocstringにも個別に
 出典コメントを付けている:
 
 - `tools/build_facility_geo_audit.py` の `_read_single_member_csv()`

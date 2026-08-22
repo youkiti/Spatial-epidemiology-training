@@ -51,12 +51,17 @@ from typing import List
 
 import pandas as pd
 
-DEFAULT_AREA_BASIC = Path(
-    "C:/Users/youki/codes/visualize-regional-medical-care-for-2040/data/processed/area_basic.csv"
-)
-DEFAULT_PREFECTURE_BASIC = Path(
-    "C:/Users/youki/codes/visualize-regional-medical-care-for-2040/data/processed/prefecture_basic.csv"
-)
+# 同じ scripts/ に置いた共有モジュールを読む。python scripts/build_population.py
+# で起動すれば sys.path[0] は scripts/ になるが、-m や別カレントからの実行でも
+# 壊れないよう明示的に足す(既存スクリプトと同じ流儀)。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lib_neighbor_repo  # noqa: E402 (パス追加の後に import する必要がある)
+
+# 隣リポジトリ側の相対パス。ルートは環境変数 NEIGHBOR_REPO か個別の引数で
+# 受け取る(issue #51。開発機の絶対パスを既定値にしない)。
+NEIGHBOR_AREA_BASIC = "data/processed/area_basic.csv"
+NEIGHBOR_PREFECTURE_BASIC = "data/processed/prefecture_basic.csv"
+
 DEFAULT_IRYOKEN2_GEOJSON = Path("data/geo/iryoken2.geojson")
 DEFAULT_OUT_DIR = Path("data/processed")
 
@@ -79,9 +84,17 @@ def write_csv(path: Path, header: List[str], rows: List[List[object]]) -> None:
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="area_basic.csv/prefecture_basic.csvから人口CSVを作る")
-    parser.add_argument("--area-basic", type=Path, default=DEFAULT_AREA_BASIC, help="area_basic.csvのパス")
     parser.add_argument(
-        "--prefecture-basic", type=Path, default=DEFAULT_PREFECTURE_BASIC, help="prefecture_basic.csvのパス"
+        "--area-basic",
+        type=Path,
+        default=None,
+        help=f"area_basic.csvのパス(未指定なら $NEIGHBOR_REPO/{NEIGHBOR_AREA_BASIC})",
+    )
+    parser.add_argument(
+        "--prefecture-basic",
+        type=Path,
+        default=None,
+        help=f"prefecture_basic.csvのパス(未指定なら $NEIGHBOR_REPO/{NEIGHBOR_PREFECTURE_BASIC})",
     )
     parser.add_argument(
         "--iryoken2-geojson",
@@ -102,21 +115,32 @@ def load_geojson_area_codes(path: Path) -> List[str]:
 def main(argv: List[str]) -> int:
     args = parse_args(argv)
 
+    # 個別指定 → $NEIGHBOR_REPO の順に解決する。どちらも無ければ入手手順を
+    # 案内して止める(存在しない既定パスのまま先へ進まない)。
+    try:
+        area_basic_path = lib_neighbor_repo.resolve(
+            args.area_basic, NEIGHBOR_AREA_BASIC, "--area-basic"
+        )
+        prefecture_basic_path = lib_neighbor_repo.resolve(
+            args.prefecture_basic, NEIGHBOR_PREFECTURE_BASIC, "--prefecture-basic"
+        )
+    except lib_neighbor_repo.NeighborRepoNotConfigured as exc:
+        print(f"エラー: {exc}", file=sys.stderr)
+        return 1
+    args.area_basic = area_basic_path
+    args.prefecture_basic = prefecture_basic_path
+
     if not args.area_basic.exists():
         print(f"エラー: area_basic.csvが見つかりません: {args.area_basic}", file=sys.stderr)
         print(
-            "隣リポジトリ visualize-regional-medical-care-for-2040 の\n"
-            "  data/processed/area_basic.csv\n"
-            "を --area-basic <path> で指定してください。",
+            lib_neighbor_repo.guidance(NEIGHBOR_AREA_BASIC, "--area-basic"),
             file=sys.stderr,
         )
         return 1
     if not args.prefecture_basic.exists():
         print(f"エラー: prefecture_basic.csvが見つかりません: {args.prefecture_basic}", file=sys.stderr)
         print(
-            "隣リポジトリ visualize-regional-medical-care-for-2040 の\n"
-            "  data/processed/prefecture_basic.csv\n"
-            "を --prefecture-basic <path> で指定してください。",
+            lib_neighbor_repo.guidance(NEIGHBOR_PREFECTURE_BASIC, "--prefecture-basic"),
             file=sys.stderr,
         )
         return 1

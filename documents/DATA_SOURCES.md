@@ -133,12 +133,26 @@ issue #4 の本文とは異なる判断を3点行っている。理由は以下�
    作りで重く壊れやすいため、今回は隣リポジトリの成果物(既に加工済みの
    GeoJSON/CSV)を起点にした。
 
+### 隣リポジトリの置き場所の指定(issue #51)
+
+下記の生成コマンドのうち、隣リポジトリ
+(<https://github.com/youkiti/visualize-regional-medical-care-for-2040>)の
+出力を入力に取るものは、**環境変数 `NEIGHBOR_REPO` でそのルートを受け取る**。
+置き場所は利用者ごとに違うため、スクリプト側に既定値は持たせていない
+(未指定なら、どこから入手すればよいかを案内して非ゼロ終了する)。
+ファイル単位で指定したいときは各スクリプトの個別引数(`--area-basic`、
+`--area-boundaries` など)を使う。個別引数が `NEIGHBOR_REPO` より優先される。
+
+```bash
+export NEIGHBOR_REPO=../visualize-regional-medical-care-for-2040
+```
+
 ### 生成コマンド・出力
 
 | 生成コマンド | 出力 |
 |---|---|
-| `Rscript scripts/build_geo.R` | `data/geo/iryoken2.geojson`・`data/geo/prefecture.geojson`・`data/geo/adjacency_iryoken2.csv`・`data/geo/adjacency_diagnostics.md`(詳細は [data/geo/README.md](../data/geo/README.md)) |
-| `python scripts/build_population.py` | `data/processed/population_iryoken2.csv`・`data/processed/population_prefecture.csv`(詳細は [data/processed/README.md](../data/processed/README.md)) |
+| `NEIGHBOR_REPO=<隣リポジトリ> Rscript scripts/build_geo.R` | `data/geo/iryoken2.geojson`・`data/geo/prefecture.geojson`・`data/geo/adjacency_iryoken2.csv`・`data/geo/adjacency_diagnostics.md`(詳細は [data/geo/README.md](../data/geo/README.md)) |
+| `NEIGHBOR_REPO=<隣リポジトリ> python scripts/build_population.py` | `data/processed/population_iryoken2.csv`・`data/processed/population_prefecture.csv`(詳細は [data/processed/README.md](../data/processed/README.md)) |
 
 ### 年齢階級別人口・65歳以上人口(issue #28、着手済み)
 
@@ -204,7 +218,7 @@ issue #4/#5 で使った隣リポジトリの `iryoken2_A38-20.geojson`(335圏�
 | 生成コマンド | 出力 |
 |---|---|
 | `python scripts/fetch_census_age.py` | `data/raw/census_age_2020_table2-7.xlsx`(gitignore対象、上記SHA-256で取得を検証) |
-| `python scripts/build_population_age.py` | 上表「出力」を参照 |
+| `NEIGHBOR_REPO=<隣リポジトリ> python scripts/build_population_age.py` | 上表「出力」を参照 |
 
 ## 施設の座標データ(issue #9)
 

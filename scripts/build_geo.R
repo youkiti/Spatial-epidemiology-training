@@ -76,37 +76,63 @@ get_arg <- function(flag, default) {
   args[idx + 1]
 }
 
-# 既定パスは実行環境(youki の作業機)を前提にした絶対パス。他人の環境では
-# 存在しないはずなので、下の file.exists() チェックで「どこを指定すればよいか」
-# を明示したエラーにして exit 1 する(黙って空の出力を作らない)。
-default_area_boundaries <- "C:/Users/youki/codes/visualize-regional-medical-care-for-2040/data/processed/area_boundaries_R7.geojson"
-default_prefecture_boundaries <- "C:/Users/youki/codes/visualize-regional-medical-care-for-2040/data/processed/prefecture_boundaries_R7.geojson"
-default_rscript_bin <- "C:/Program Files (x86)/R/R-4.5.2/bin/Rscript.exe"
-
-area_path <- get_arg("--area-boundaries", default_area_boundaries)
-pref_path <- get_arg("--prefecture-boundaries", default_prefecture_boundaries)
-out_dir <- get_arg("--out-dir", "data/geo")
-rscript_bin <- get_arg("--rscript-bin", default_rscript_bin)
+# 境界データの入力は隣リポジトリ(visualize-regional-medical-care-for-2040)の
+# 出力。置き場所は利用者ごとに違うので既定値は持たせず、環境変数 NEIGHBOR_REPO
+# か個別の引数で受け取る(issue #51。開発機の絶対パスにフォールバックしない)。
+neighbor_area_boundaries <- "data/processed/area_boundaries_R7.geojson"
+neighbor_prefecture_boundaries <- "data/processed/prefecture_boundaries_R7.geojson"
 
 fail <- function(msg) {
   message(msg)
   quit(status = 1)
 }
 
+# 入手手順の案内。scripts/lib_neighbor_repo.py の guidance() と同じ文面を保つ。
+neighbor_guidance <- function(relative, option) {
+  paste0(
+    "隣リポジトリ visualize-regional-medical-care-for-2040 の\n",
+    "  ", relative, "\n",
+    "が必要です。次のどちらかで場所を指定してください。\n",
+    "  1. 環境変数 NEIGHBOR_REPO に隣リポジトリのルートを設定する\n",
+    "     (例: NEIGHBOR_REPO=../visualize-regional-medical-care-for-2040)\n",
+    "  2. ", option, " <path> でファイルを直接指定する\n",
+    "隣リポジトリの入手元と、この入力の生成手順は\n",
+    "  https://github.com/youkiti/visualize-regional-medical-care-for-2040\n",
+    "および documents/DATA_SOURCES.md を参照。"
+  )
+}
+
+# 個別指定 → $NEIGHBOR_REPO の順に解決する。どちらも無ければ案内して exit 1
+# (黙って存在しないパスのまま先へ進み、空の出力を作らない)。
+resolve_neighbor_path <- function(flag, relative) {
+  given <- get_arg(flag, NULL)
+  if (!is.null(given)) return(given)
+  root <- Sys.getenv("NEIGHBOR_REPO", unset = "")
+  if (nzchar(root)) return(file.path(root, relative))
+  fail(paste0("エラー: ", neighbor_guidance(relative, flag)))
+}
+
+area_path <- resolve_neighbor_path("--area-boundaries", neighbor_area_boundaries)
+pref_path <- resolve_neighbor_path("--prefecture-boundaries", neighbor_prefecture_boundaries)
+out_dir <- get_arg("--out-dir", "data/geo")
+# poly2nb() を切り出す子プロセスの Rscript。既定はこのプロセス自身の R
+# (開発機固有の絶対パスを既定にしない。別の R を使いたいときは --rscript-bin)。
+default_rscript_bin <- file.path(
+  R.home("bin"),
+  if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
+)
+rscript_bin <- get_arg("--rscript-bin", default_rscript_bin)
+
 if (!file.exists(area_path)) {
   fail(paste0(
     "エラー: 二次医療圏境界の入力ファイルが見つかりません: ", area_path, "\n",
-    "隣リポジトリ visualize-regional-medical-care-for-2040 の\n",
-    "  data/processed/area_boundaries_R7.geojson\n",
-    "を --area-boundaries <path> で指定してください。"
+    neighbor_guidance(neighbor_area_boundaries, "--area-boundaries")
   ))
 }
 if (!file.exists(pref_path)) {
   fail(paste0(
     "エラー: 都道府県境界の入力ファイルが見つかりません: ", pref_path, "\n",
-    "隣リポジトリ visualize-regional-medical-care-for-2040 の\n",
-    "  data/processed/prefecture_boundaries_R7.geojson\n",
-    "を --prefecture-boundaries <path> で指定してください。"
+    neighbor_guidance(neighbor_prefecture_boundaries, "--prefecture-boundaries")
   ))
 }
 if (!file.exists(rscript_bin)) {
