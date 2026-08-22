@@ -348,3 +348,200 @@
 [data-md-color-scheme="slate"] .md-typeset a:focus {
   color: var(--md-accent-fg-color);
 }
+
+/* ====================================================================
+   ヘッダー・ナビゲーションタブのコントラスト是正 (issue #64)
+   ----------------------------------------------------------------------
+   実測(2026-08-22、issue #53 のブラウザE2E): ヘッダーのサイト名/ページ名・
+   ナビタブ・リポジトリ表示・スター数は、いずれも白文字
+   (--md-primary-bg-color = #fff)を teal 既定の地色
+   (--md-primary-fg-color = #009485)に載せており 3.77:1 で WCAG AA (4.5:1)
+   未達。ヘッダーの地色は primary そのものでスキームに依存しないため、
+   ライト・ダークの区別なく同じ値になる。
+
+   直し方(issue #64 の案A/案B)は案Bを採る:
+     - 案A(mkdocs.yml の theme.palette.primary を暗い色に変える)は採らない。
+       上の issue #33 セクションの上書きがセレクタに
+       [data-md-color-primary="teal"] を含むため、primary を変えると本文
+       リンクの上書きが(エラーも警告も出ないまま)無言で外れ、ライトのリンクが
+       3.77:1 に戻る。
+     - 案B(primary: teal は据え置き、地色だけを extra.css で暗くする)を採る。
+       変数 --md-primary-fg-color 自体を teal 800 (#00695c) に下げる。この
+       変数を使うのは .md-header / .md-tabs /
+       .md-nav--primary .md-nav__title[for=__drawer] /
+       .md-typeset .md-button--primary の4箇所(Materialのビルド済みCSSを
+       grepして確認)で、いずれも白文字を載せる面なのでまとめて是正できる。
+       副次的に、ライトの本文リンク色(#00695c、上の issue #33 セクション)と
+       同値になり、「リンク色 = primary」というMaterial既定の関係が戻る。
+
+   --md-primary-fg-color--dark も併せて下げる: .md-nav__source(モバイル
+   ドロワー内のリポジトリ表示)がこの変数を使う。素の値 #007a6c は白文字でも
+   AA を満たすが、地色を #00695c に下げると「ドロワーのタイトルより明るい」
+   という明暗の逆転が起きるため、teal 900 (#004d40) に下げて元の関係を保つ。
+
+   特異度: Materialは [data-md-color-primary=teal] (0,1,0) で定義しており、
+   slate 側に再定義は無い(palette.*.min.css を grep して確認。ヘッダーが
+   両スキームで同じ 3.77:1 になるのはこのため)。上の issue #33 セクションと
+   書き方を揃え、両スキームとも
+   [data-md-color-scheme="..."][data-md-color-primary="teal"] (0,2,0) で
+   書いて読み込み順に頼らず上回らせる。primary を teal 以外に変えるとこの
+   上書きも無言で外れる点は issue #33 セクションと同じ。
+
+   修正後の実測(2026-08-22、同じE2E): サイト名/ページ名・ナビタブ・リポジトリ
+   表示・スター数・ドロワーのタイトルはいずれも 3.77 → 6.61、ドロワーの
+   リポジトリ表示は 5.25 → 9.83(いずれもライト/ダーク共通)。
+   ==================================================================== */
+[data-md-color-scheme="default"][data-md-color-primary="teal"],
+[data-md-color-scheme="slate"][data-md-color-primary="teal"] {
+  --md-primary-fg-color: #00695c;
+  --md-primary-fg-color--dark: #004d40;
+}
+
+/* ====================================================================
+   ナビゲーション・目次リンクのホバー色のコントラスト是正 (issue #65)
+   ----------------------------------------------------------------------
+   実測(2026-08-22、issue #53 のブラウザE2E。Materialのホバー遷移(約0.25秒)を
+   跨がないよう hover() の400ms後に読んだ値): 左サイドバー(ナビ)と右サイドバー
+   (目次)のリンクをホバーしたときの文字色は Material 既定の
+   var(--md-accent-fg-color) = #ff6e42 で、ライトは白地に載るため 2.78:1 と
+   AA 未達。ダークは slate の地色に載るため 5.79:1 で問題ない。静止状態の
+   ナビリンクは両スキームとも AA を満たしており、落ちるのはホバー時だけ。
+
+   上の issue #33 セクションの上書きは .md-typeset a にスコープを閉じている
+   ためナビには及んでいなかった。同じ考え方で、ライトのホバー色だけを本文
+   リンクと同じ deep orange 900 相当 (#bf360c) に下げる。
+   --md-accent-fg-color 自体は書き換えない(ナビ・検索・コード等で共有される
+   変数のため)。
+
+   特異度: Materialの該当ルールは
+     .md-nav__link[for]:hover, .md-nav__link[href]:hover ...      (0,3,0)
+     .md-nav--primary .md-nav__item--active>.md-nav__link:hover   (0,4,0)
+   の2本。前者だけに [data-md-color-scheme="default"] を足すと (0,4,0) で
+   後者と同点になり読み込み順頼みになるため、後者に対応する形も併記して
+   (0,5,0) で確実に上回らせる。
+
+   修正後の実測(2026-08-22、同じE2E): ナビ・目次とも ライト 2.78 → 5.60、
+   ダークは 5.79 のまま(据え置き)。本文リンクのホバー(ライト 5.60 /
+   ダーク 5.79)とクイズ採点結果ボックス内リンク(5.14 / 5.15)も回帰なし。
+   ==================================================================== */
+[data-md-color-scheme="default"] .md-nav__link[for]:focus,
+[data-md-color-scheme="default"] .md-nav__link[for]:hover,
+[data-md-color-scheme="default"] .md-nav__link[href]:focus,
+[data-md-color-scheme="default"] .md-nav__link[href]:hover,
+[data-md-color-scheme="default"] .md-nav--primary .md-nav__item--active > .md-nav__link:focus,
+[data-md-color-scheme="default"] .md-nav--primary .md-nav__item--active > .md-nav__link:hover {
+  color: #bf360c;
+}
+
+/* ダーク(slate): 値は変えない(実測 5.79:1)。ライト向け上書きが波及しない
+   ことと、accent を変更したときにダーク側だけリテラル値で取り残されない
+   ことを明示するため、対称な特異度で変数のまま再掲する(上の issue #33
+   セクションのダーク側と同じ方針)。 */
+[data-md-color-scheme="slate"] .md-nav__link[for]:focus,
+[data-md-color-scheme="slate"] .md-nav__link[for]:hover,
+[data-md-color-scheme="slate"] .md-nav__link[href]:focus,
+[data-md-color-scheme="slate"] .md-nav__link[href]:hover,
+[data-md-color-scheme="slate"] .md-nav--primary .md-nav__item--active > .md-nav__link:focus,
+[data-md-color-scheme="slate"] .md-nav--primary .md-nav__item--active > .md-nav__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* ====================================================================
+   検索の補助テキストのコントラスト是正 (issue #66)
+   ----------------------------------------------------------------------
+   実測(2026-08-22、issue #53 のブラウザE2E): 検索パネルの補助テキスト
+   「検索キーワードを入力してください」と検索結果の件数表示
+   (.md-search-result__meta。両者は同じクラス)は Material 9.7.6 の既定配色
+   そのままで、ライト 4.42:1 / ダーク 4.06:1 と AA をわずかに下回る。
+   地色は --md-default-fg-color--lightest(ライトは白地に黒7%で #ededed 相当、
+   ダークは slate 地色に白を重ねた rgb(54,56,64) 相当)、文字色は
+   --md-default-fg-color--light。
+
+   文字色だけをスキームごとに一段濃く(ダークは一段明るく)する。本文と同じ
+   濃さ(--md-default-fg-color、黒87%)まで上げると補助テキストという階層が
+   消えるため、AA を満たす範囲で控えめな値を選ぶ。地色との合成が前提なので
+   ライトは黒・ダークは白の不透明度で指定する(Materialが地色を変えても
+   前景と背景が同方向に動き、破綻しにくい)。
+   特異度: Materialの定義は .md-search-result__meta (0,1,0) なので、
+   [data-md-color-scheme="..."] を足した (0,2,0) で上回る。
+
+   修正後の実測(2026-08-22、同じE2E): ライト 4.42 → 5.89(rgb(90,90,90) on
+   rgb(237,237,237))、ダーク 4.06 → 6.10(rgb(186,187,190) on rgb(54,56,64))。
+   ==================================================================== */
+[data-md-color-scheme="default"] .md-search-result__meta {
+  color: rgba(0, 0, 0, 0.62);
+}
+
+[data-md-color-scheme="slate"] .md-search-result__meta {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+/* ====================================================================
+   ボタン(.md-button)のコントラスト是正 (issue #68)
+   ----------------------------------------------------------------------
+   クイズの「採点する」(.md-button--primary)と「選択をクリア」(.md-button)。
+   実測(2026-08-22、上の issue #64/#65/#66 を直すために組んだE2Eの
+   ベースライン測定。issue #53 のE2Eはボタンを測っていなかった):
+
+     採点する   静止(両スキーム)  #fff on #009485          3.77:1  未達
+     クリア     静止・ライト      #009485 on #fff          3.77:1  未達
+     クリア     静止・ダーク      #009485 on slate地色     4.27:1  未達
+     両方       ホバー/フォーカス #fff on #ff6e42          2.78:1  未達
+
+   Materialの該当ルール(ビルド済み main.*.min.css を読んで確認):
+     .md-typeset .md-button          {color:var(--md-primary-fg-color)}   (0,2,0)
+     .md-typeset .md-button--primary {background-color:var(--md-primary-fg-color);
+                                      color:var(--md-primary-bg-color)}   (0,2,0)
+     .md-typeset .md-button:hover    {background-color:var(--md-accent-fg-color);
+                                      color:var(--md-accent-bg-color)}    (0,3,0)
+   静止は primary(#009485)由来で issue #64 と、ホバーは accent(#ff6e42)由来で
+   issue #65 と同じ原因。
+
+   issue #64 の修正と分離できない点に注意: 上の issue #64 セクションで
+   --md-primary-fg-color を #00695c に下げると、「採点する」の静止は
+   3.77 → 6.61 に直る一方、「選択をクリア」の静止・ダークは文字色が
+   その変数のままなので 4.27 → 2.43 に悪化する(この値も実測。#64 の修正を
+   入れたまま、このセクションの文字色指定だけを Material 既定に戻して測った)。
+   ここで文字色を primary から切り離すことが #64 の前提になっている。
+
+   直し方:
+     1. 全ボタンの文字色をリンク色(--md-typeset-a-color。issue #33 で
+        ライト #00695c / ダーク #00ccb8 の AA を確認済み)に切り替える。
+     2. primary ボタンだけは白文字(--md-primary-bg-color)を維持する。1. の
+        セレクタ(0,3,0)がMaterialの .md-button--primary (0,2,0)より強く、
+        そのままだと primary の白文字まで上書きしてしまうため、同じ
+        特異度(0,3,0)で後に書いて戻す(同点はソース順で決まり、どちらも
+        このファイル内なので順序を自分で保証できる)。
+     3. ホバー/フォーカスの地色を本文リンクのホバーと同じ deep orange 900
+        相当(#bf360c)に下げる。白文字のままで 5.60:1 になる。地色・文字色とも
+        スキームに依存しないため、ライト・ダークで同じ値を明示する。
+        このルールは(0,4,0)で 1. と 2. のどちらより強く、ホバー時に静止色が
+        勝ってしまう事故(accent地色の上にリンク色の文字が乗る)を防ぐ。
+
+   修正後の実測(2026-08-22、同じE2E): 採点する 静止 3.77 → 6.61(両スキーム)、
+   選択をクリア 静止 ライト 3.77 → 6.61 / ダーク 4.27 → 7.92、
+   両ボタンのホバー 2.78 → 5.60(両スキーム)。
+   ==================================================================== */
+[data-md-color-scheme="default"] .md-typeset .md-button,
+[data-md-color-scheme="slate"] .md-typeset .md-button {
+  color: var(--md-typeset-a-color);
+}
+
+/* primary ボタンの白文字を戻す(上のルールと同特異度・後勝ち)。地色は
+   上の issue #64 セクションで #00695c に下がっており、白文字で 6.61:1。 */
+[data-md-color-scheme="default"] .md-typeset .md-button--primary,
+[data-md-color-scheme="slate"] .md-typeset .md-button--primary {
+  color: var(--md-primary-bg-color);
+}
+
+/* ホバー/フォーカス: 地色を #bf360c に下げ、白文字のまま 5.60:1 にする。
+   --md-accent-fg-color 自体は書き換えない(共有変数のため。上の issue #65
+   セクションと同じ方針)。 */
+[data-md-color-scheme="default"] .md-typeset .md-button:focus,
+[data-md-color-scheme="default"] .md-typeset .md-button:hover,
+[data-md-color-scheme="slate"] .md-typeset .md-button:focus,
+[data-md-color-scheme="slate"] .md-typeset .md-button:hover {
+  background-color: #bf360c;
+  border-color: #bf360c;
+  color: #fff;
+}
