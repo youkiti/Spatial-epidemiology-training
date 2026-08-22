@@ -348,3 +348,87 @@
 [data-md-color-scheme="slate"] .md-typeset a:focus {
   color: var(--md-accent-fg-color);
 }
+
+/* --------------------------------------------------------------------
+   ナビ・目次リンクのホバー/フォーカス色 (issue #65)
+   ----------------------------------------------------------------------
+   実測: ライトで .md-nav__link:hover の文字色が var(--md-accent-fg-color)
+   素の値 rgb(255,110,66)(#ff6e42)になり、白地で 2.78:1 と WCAG AA 未達。
+   ダークは同じ色が slate 既定背景(#1e2129)に対し 5.79:1 で問題ない。
+   上の issue #33 の上書きは `.md-typeset a` にしか当たっておらずナビ側には
+   及んでいないため、別途ここで直す。
+
+   #bf360c は issue #33 でライトの本文リンク hover に採用済みの
+   deep orange 900(白背景で実測5.60:1)。ナビと本文でホバー色を揃える。
+
+   :focus も併記する理由: Material 自身が
+   `.md-nav__link:focus,.md-nav__link:hover{color:var(--md-accent-fg-color)}`
+   と対で定義しており、hover だけ直すとキーボード操作(focus)で同じAA未達が
+   残るため。
+
+   slate 側は issue #33 の hover 再掲と同じ発想で var(--md-accent-fg-color)
+   のまま再掲する(値は変えず 5.79:1 を維持し、accent の変更に自動追随させる)。
+
+   特異度: Material 側の `.md-nav__link:focus,.md-nav__link:hover` は
+   (0,2,0)。ここでのスキームガード付き上書きは(0,3,0)で確実に勝つ。
+   -------------------------------------------------------------------- */
+
+[data-md-color-scheme="default"] .md-nav__link:hover,
+[data-md-color-scheme="default"] .md-nav__link:focus {
+  color: #bf360c;
+}
+
+[data-md-color-scheme="slate"] .md-nav__link:hover,
+[data-md-color-scheme="slate"] .md-nav__link:focus {
+  color: var(--md-accent-fg-color);
+}
+
+/* ====================================================================
+   ヘッダー・ナビタブ・検索補助テキストのコントラスト是正
+   (issue #64: ヘッダー/タブ地色、issue #66: 検索結果メタ文字色)
+   ==================================================================== */
+
+/* issue #64: ヘッダー・ナビタブの地色を暗くする。
+   実測: theme.palette.primary: teal により .md-header と .md-tabs の地色が
+   --md-primary-fg-color = #009485 になり、その上の白文字が 3.77:1 で
+   WCAG AA (4.5:1) 未達(ライト/ダーク共通。ヘッダー地色はスキームに依存しない)。
+
+   #00695c は Material の teal-800 で、ライトの本文リンク色(issue #33で採用済み)
+   と同じ値。白文字とのコントラストは実測6.61:1。
+
+   `[data-md-color-primary="teal"]` を付ける理由: パレットを teal 以外に
+   変えたときにこの上書きが自動で外れて、色の不整合(残りは新パレット、
+   ヘッダーだけteal-800)が起きないようにするため。issue #33 節と同じ
+   ガードの発想。
+
+   スキーム別の上書きが不要な理由: ヘッダー地色は --md-primary-fg-color
+   そのもので、default/slate どちらのスキームでも同じ#009485。1本のルールで
+   両スキームに同じ効果になる。「ハードコード色を足したらslate側も併記する」
+   規約は"ライト向けの値が暗背景で崩れる"事故の防止が目的で、ここは両スキーム
+   とも同じ暗地色+白文字なので崩れない。
+
+   特異度の注意: Material側は
+   `.md-header{background-color:var(--md-primary-fg-color)}` /
+   `.md-tabs{...}` の(0,1,0)。この上書きは(0,2,0)で読み込み順によらず勝つ。 */
+[data-md-color-primary="teal"] .md-header,
+[data-md-color-primary="teal"] .md-tabs {
+  background-color: #00695c;
+}
+
+/* issue #66: 検索ボックス補助テキスト(「検索キーワードを入力してください」・
+   件数表示)のコントラスト是正。
+   実測: .md-search-result__meta がライト4.42:1(rgb(109,109,109) on
+   rgb(237,237,237))、ダーク4.06:1(rgb(150,152,159) on rgb(54,56,64))で
+   いずれもMaterial既定配色のままわずかにAA未達。
+
+   #595959 は #ededed 地に対して推定コントラスト比 約5.9:1、
+   #a9abb4 は #363840 地に対して推定コントラスト比 約5.1:1。
+
+   特異度: Material側は(0,1,0)想定。スキームガード付き(0,2,0)で勝つ。 */
+[data-md-color-scheme="default"] .md-search-result__meta {
+  color: #595959;
+}
+
+[data-md-color-scheme="slate"] .md-search-result__meta {
+  color: #a9abb4;
+}
