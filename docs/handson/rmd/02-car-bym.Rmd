@@ -515,7 +515,7 @@ beta_row_leroux
 exp(beta_row_leroux[c("Mean", "2.5%", "97.5%")])
 ```
 
-Leroux CARモデルでの高齢者割合の係数(`elderly_10pct`)の事後平均は`r round(beta_row_leroux[["Mean"]], 4)`(95%信用区間`r round(beta_row_leroux[["2.5%"]], 4)`〜`r round(beta_row_leroux[["97.5%"]], 4)`)です。指数を取ると、**高齢者割合が10ポイント高い医療圏は、人口から期待される専門医数に対する比が`r round(exp(beta_row_leroux[["Mean"]]), 3)`倍**(95%信用区間`r round(exp(beta_row_leroux[["2.5%"]]), 3)`〜`r round(exp(beta_row_leroux[["97.5%"]]), 3)`倍)になると推定されます。信用区間が1を`r ifelse(exp(beta_row_leroux[["2.5%"]]) > 1 || exp(beta_row_leroux[["97.5%"]]) < 1, "跨いでおらず、統計的に意味のある関連", "跨いでおり、統計的に明確な関連とは言えない結果")`です。収束が不十分だったBYMモデルの同じ係数の事後平均`r round(beta_row_bym[["Mean"]], 4)`と比べても大きくは違わず、**この係数についてはモデル間で結論が変わっていません**(BYMの`tau2`・`sigma2`の収束不足は、空間相関成分と非構造化誤差成分の切り分けに影響する問題であり、共変量の効果そのものの推定を大きく歪めるものではなかったと考えられます)。
+Leroux CARモデルでの高齢者割合の係数(`elderly_10pct`)の事後平均は`r round(beta_row_leroux[["Mean"]], 4)`(95%信用区間`r round(beta_row_leroux[["2.5%"]], 4)`〜`r round(beta_row_leroux[["97.5%"]], 4)`)です。指数を取ると、**高齢者割合が10ポイント高い医療圏は、人口から期待される専門医数に対する比が`r round(exp(beta_row_leroux[["Mean"]]), 3)`倍**(95%信用区間`r round(exp(beta_row_leroux[["2.5%"]]), 3)`〜`r round(exp(beta_row_leroux[["97.5%"]]), 3)`倍)になると推定されます。この信用区間は1を`r ifelse(exp(beta_row_leroux[["2.5%"]]) > 1 || exp(beta_row_leroux[["97.5%"]]) < 1, "含みません", "含みます")`。収束が不十分だったBYMモデルの同じ係数の事後平均`r round(beta_row_bym[["Mean"]], 4)`と比べても大きくは違わず、**この係数についてはモデル間で結論が変わっていません**(BYMの`tau2`・`sigma2`の収束不足は、空間相関成分と非構造化誤差成分の切り分けに影響する問題であり、共変量の効果そのものの推定を大きく歪めるものではなかったと考えられます)。
 
 **この関連を「高齢者が多い地域だから専門医が集まる/集まらない」という個人レベルの因果として読んではいけません。** これは二次医療圏という地域単位で見た関連であり、後述の「生態学的誤謬」の節で改めて注意します。
 
