@@ -54,7 +54,7 @@
 患者数だけで順位をつけると A(100)>C(60)>D(40)>B(20)>E(15) ですが、率で順位をつけると B(2,000)>E(300)>D(200)>C(120)>A(100) と、ほぼ逆転します。下の図は、この2つの塗り分けを塗りの強さ(不透明度)で表したものです。
 
 <figure>
-<svg viewBox="0 0 640 220" width="640" role="img" style="max-width:100%;height:auto" aria-labelledby="fig1-title fig1-desc">
+<svg viewBox="0 0 640 220" width="480" role="img" style="max-width:100%;height:auto" aria-labelledby="fig1-title fig1-desc">
 <title id="fig1-title">患者数の地図と人口10万対の率の地図の対比(架空5市町村)</title>
 <desc id="fig1-desc">同じ5市町村を、患者数で塗った場合と人口10万対の率で塗った場合で、塗りが強い市町村が入れ替わることを示す図。数値は表1と同じ。</desc>
 <text x="10" y="24" fill="currentColor" font-size="15">患者数の地図(塗りが強い = 患者数の順位が高い、5段階)</text>
@@ -140,7 +140,7 @@ SIR (または SMR) = 観察数 O ÷ 期待数 E
 等間隔(最小100〜最大2,000の幅を3等分)では、B町だけが突出して「高」に入り、残る4市町はすべて「低」という同じ扱いになります。分位(地域数が均等になるように3階級に分ける)では、同じデータでもD市とE町が「中」に移り、A市・C市とは違う色になります。**元のデータは1つも変えていません。**変えたのは区切り方だけです。それでも、地図を見た人が受ける印象(どこが「同じグループ」でどこが「違うグループ」か)は変わります。
 
 <figure>
-<svg viewBox="0 0 640 150" width="640" role="img" style="max-width:100%;height:auto" aria-labelledby="fig2-title fig2-desc">
+<svg viewBox="0 0 640 150" width="480" role="img" style="max-width:100%;height:auto" aria-labelledby="fig2-title fig2-desc">
 <title id="fig2-title">同じ率データを等間隔と分位で階級区分した場合の塗り分けの違い</title>
 <desc id="fig2-desc">表2の5市町村を、等間隔での3階級と分位での3階級でそれぞれ塗り分けた図。D市とE町の階級(塗りの強さ)が、区切り方によって変わることを示す。</desc>
 <text x="10" y="20" fill="currentColor" font-size="14">等間隔(A,C,D,Eが同じ「低」、Bだけ「高」)</text>

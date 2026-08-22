@@ -28,7 +28,7 @@
 
 3×3のマス目の中央のセルを基準にすると、queen では周囲8マスすべてが隣になりますが、rook では上下左右の4マスだけが隣になります。
 
-<svg viewBox="0 0 380 180" width="380" role="img" style="max-width:100%;height:auto">
+<svg viewBox="0 0 380 180" width="100%" role="img" style="max-width:100%;height:auto">
   <title>queen contiguity と rook contiguity の比較。3×3マスの中央セルを基準に、queenでは周囲8マス、rookでは上下左右4マスが隣になる</title>
   <text x="89" y="16" text-anchor="middle" font-size="13" fill="currentColor">queen contiguity(8方向)</text>
   <text x="267" y="16" text-anchor="middle" font-size="13" fill="currentColor">rook contiguity(4方向)</text>
@@ -91,7 +91,7 @@
 
 隣の定義が決まったら、それを行列 `W` として書き出します。A市・B市・C市・D市の4地域が、次のような位置関係にあるとします(架空の配置例です)。
 
-<svg viewBox="0 0 260 200" width="260" role="img" style="max-width:100%;height:auto">
+<svg viewBox="0 0 260 200" width="100%" role="img" style="max-width:100%;height:auto">
   <title>4地域の隣接関係。A市はB市・C市と隣接し、D市とは隣接しない(架空の配置例)</title>
   <line x1="84" y1="50" x2="176" y2="50" stroke="currentColor"/>
   <line x1="60" y1="74" x2="60" y2="136" stroke="currentColor"/>
