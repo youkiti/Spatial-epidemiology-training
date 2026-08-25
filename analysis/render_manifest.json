@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-22T13:11:14+0900",
+    "generated_at": "2026-08-25T18:10:49+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -8,15 +8,15 @@
     "00-setup": {
       "source_rmd": {
         "path": "analysis/handson/00-setup.Rmd",
-        "sha256": "7dba9106fb5f2cba4c88a270d44c5b8ec573a205ba00e4812736e52c8d822a3b"
+        "sha256": "542746e0dce096b6f70e0e85608adaf2235442df9afb1077d5d5402e94e3b6ce"
       },
       "output_md": {
         "path": "docs/handson/00-setup.md",
-        "sha256": "e69f8889bfb77d09066e5c21af3323c5e91edb0b58adec8702100f6f79cc2b70"
+        "sha256": "4f971e812224b4fdc8db8ef2d13b50a55cf82125bb37a37b1d175e4dc0a3541e"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/00-setup.Rmd",
-        "sha256": "7dba9106fb5f2cba4c88a270d44c5b8ec573a205ba00e4812736e52c8d822a3b"
+        "sha256": "542746e0dce096b6f70e0e85608adaf2235442df9afb1077d5d5402e94e3b6ce"
       },
       "data_inputs": [
         {
@@ -27,22 +27,22 @@
       "figures": [
         {
           "path": "docs/handson/figures/00-setup-toy10-rate-1.png",
-          "sha256": "7ded59d7a69ef898893b3a46559ef2d043dbf825501825ba9992317af7feb327"
+          "sha256": "2a158aa1952c85c3e04b99fc4e3a7ec56aea651adb95c3555ff6ebeafbc047a3"
         }
       ]
     },
     "01-map-moran-lisa-gi": {
       "source_rmd": {
         "path": "analysis/handson/01-map-moran-lisa-gi.Rmd",
-        "sha256": "6f76d5c14d7689bc30fd878f66516ff5bdf11eac6025f00a22bf9fa47841e2f5"
+        "sha256": "a41bae4fcb2e3222a5e35edc57faf093b3ddd8a8a1949d35ba5d484c53417510"
       },
       "output_md": {
         "path": "docs/handson/01-map-moran-lisa-gi.md",
-        "sha256": "f0b05bab7e5e73ca371e19b7610cb7dd1ae5c42ff149009e9b1b4869361f9a17"
+        "sha256": "6f6d6208f26c069006e161f4b284f125d8c42c22b5cfdb20164e2c71bace2f56"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/01-map-moran-lisa-gi.Rmd",
-        "sha256": "6f76d5c14d7689bc30fd878f66516ff5bdf11eac6025f00a22bf9fa47841e2f5"
+        "sha256": "a41bae4fcb2e3222a5e35edc57faf093b3ddd8a8a1949d35ba5d484c53417510"
       },
       "data_inputs": [
         {
@@ -85,26 +85,26 @@
         },
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-lattice-1.png",
-          "sha256": "5d932b61e4504aae3c7c0bb3cef851cd38e28edd555c7d8915a443e2798a4401"
+          "sha256": "ed953416973daebcda1eff87ab5d47d55367966a12f7a22b695c06606e499bc3"
         },
         {
           "path": "docs/handson/figures/01-map-moran-lisa-gi-map-rate-toy10-1.png",
-          "sha256": "02474c24daef5351ee922150a599d5cd5b09f5fc8e79978a8f5d632184f33e75"
+          "sha256": "57dc7e23ce53d70f76f03549c662b24d2c9501f27de03252e6173f3ad372a5f8"
         }
       ]
     },
     "02-car-bym": {
       "source_rmd": {
         "path": "analysis/handson/02-car-bym.Rmd",
-        "sha256": "5a2c1d891141f540a773998244a2a6c95621d5dcfbb6258875d1573a292a96aa"
+        "sha256": "d1886c9526a52bdb08d20d2addd4649b84c25a394c603663948f6de0653b123e"
       },
       "output_md": {
         "path": "docs/handson/02-car-bym.md",
-        "sha256": "40bc76e04a46ae558e84af82c70d244bc1494c7c3247546f14bf3475acc03839"
+        "sha256": "8c4fa5d4a1b6b249d66f9a6880ce98da3d1320e5a1d33bfe26dda89ef9830489"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/02-car-bym.Rmd",
-        "sha256": "5a2c1d891141f540a773998244a2a6c95621d5dcfbb6258875d1573a292a96aa"
+        "sha256": "d1886c9526a52bdb08d20d2addd4649b84c25a394c603663948f6de0653b123e"
       },
       "data_inputs": [
         {
@@ -150,15 +150,15 @@
     "03-maup": {
       "source_rmd": {
         "path": "analysis/handson/03-maup.Rmd",
-        "sha256": "c34db8311527543e1bf38ad5f581ebee844ddd0258fea95e99d77d925b2759cc"
+        "sha256": "566aa4e871e513c248f3562261fe0a7a3e50d78f171239512adb3089c87b9f63"
       },
       "output_md": {
         "path": "docs/handson/03-maup.md",
-        "sha256": "1eb30ceb894c48eb60e9fe167b006675eb135c09625c758ec96d8cb008ed8622"
+        "sha256": "dce02c065192c0ec5671656d5f6edbbdeb00c28dcb2efe8d56d59180e9f27879"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/03-maup.Rmd",
-        "sha256": "c34db8311527543e1bf38ad5f581ebee844ddd0258fea95e99d77d925b2759cc"
+        "sha256": "566aa4e871e513c248f3562261fe0a7a3e50d78f171239512adb3089c87b9f63"
       },
       "data_inputs": [
         {

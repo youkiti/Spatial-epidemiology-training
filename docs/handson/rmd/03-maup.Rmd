@@ -132,7 +132,7 @@ cat(sprintf("系列C(公式集計、海外14名を除く47都道府県分): %d�
 
 系列Aは積み上げ前後で人数が変わらないことをこのコード自身が確認しています。系列Cが系列A・Bより多いのは、[ケーススタディのデータ(資料)の「データの制約」](04-case-study.md)で説明している名寄せの未割付分(施設名が公表データに見つからず座標を持てなかった専門医)が、都道府県公式集計には最初から含まれているためです。
 
-人口10万対の率(`rate_per_100k`)を都道府県・二次医療圏それぞれで計算します。この先の地図・Global Moran's I・LISA・Gi\*は、特に断らない限り**系列A(診療の場のみ、主系列)**の率を使います。
+人口10万対専門医数(`rate_per_100k`)を都道府県・二次医療圏それぞれで計算します。この先の地図・Global Moran's I・LISA・Gi\*は、特に断らない限り**系列A(診療の場のみ、主系列)**の人口10万対専門医数を使います。
 
 ```{r rates}
 iryoken2_df <- pop_iryoken2 |>
@@ -227,7 +227,7 @@ iryoken2_map <- iryoken2_sf |> left_join(iryoken2_df |> dplyr::select(area_code,
 rate_care_limits <- c(0, max(c(pref_df$rate_care, iryoken2_df$rate_care), na.rm = TRUE))
 rate_care_limits
 
-# alt textが「どこが濃いか」として挙げる地域名も、目視ではなく率の順位から作る
+# alt textが「どこが濃いか」として挙げる地域名も、目視ではなく人口10万対専門医数の順位から作る
 # (地域名を alt text に直接書くと、データが動いたときに図と説明が食い違っても
 # 画面上は何も起きず、読み上げ環境の読者にだけ誤った説明が届く)。
 pref_by_rate <- pref_df |> arrange(desc(rate_care))
@@ -238,7 +238,7 @@ areas_in <- function(pref) {
 }
 ```
 
-```{r map-pref-rate, fig.alt=sprintf("%d都道府県の人口10万対専門医数(系列A・診療の場のみ)の地図。%sが最も濃く、%sも比較的濃い(ただし率の高さとGi*のhot spot判定は一致するとは限らない。詳しくはStep 4)。色の基準は次の二次医療圏の地図と共通(0〜約%.1f)にしてあるため、二次医療圏の地図に比べると全体に薄く、色の差も小さく見える。", nrow(pref_df), pref_by_rate$pref_name[1], paste(pref_by_rate$pref_name[2:4], collapse = "・"), rate_care_limits[2]), fig.width=6.5, fig.height=6}
+```{r map-pref-rate, fig.alt=sprintf("%d都道府県の人口10万対専門医数(系列A・診療の場のみ)の地図。%sが最も濃く、%sも比較的濃い(ただし人口10万対専門医数の高さとGi*のhot spot判定は一致するとは限らない。詳しくはStep 4)。色の基準は次の二次医療圏の地図と共通(0〜約%.1f)にしてあるため、二次医療圏の地図に比べると全体に薄く、色の差も小さく見える。", nrow(pref_df), pref_by_rate$pref_name[1], paste(pref_by_rate$pref_name[2:4], collapse = "・"), rate_care_limits[2]), fig.width=6.5, fig.height=6}
 ggplot(pref_map) +
   geom_sf(aes(fill = rate_care), color = "white", linewidth = 0.2) +
   scale_fill_gradient(low = "#a8c7e8", high = "#08306b", limits = rate_care_limits) +
@@ -337,7 +337,7 @@ pref_lisa_gi <- pref_df |>
     quadrant = if_else(isolated, NA_character_, as.character(attr(lm_pref, "quadr")$mean)),
     local_p = lm_pref[, "Pr(z != E(Ii))"],
     gi_z = if_else(isolated, NA_real_, as.numeric(gi_pref)),
-    # 「率で2位」のような文中の順位はハードコードせず、rank()で計算して
+    # 「人口10万対専門医数で2位」のような文中の順位はハードコードせず、rank()で計算して
     # inline Rから参照する(データが動いても本文の順位が追従するように)。
     rank_care = rank(-rate_care, ties.method = "min")
   )
@@ -359,10 +359,10 @@ pref_lisa_gi |>
   arrange(desc(rate_care)) |>
   dplyr::select(pref_name, rate_care, quadrant, local_p, gi_z) |>
   head(8) |>
-  knitr::kable(digits = 3, col.names = c("都道府県", "率", "LISA分類", "局所p値", "Gi* z値"))
+  knitr::kable(digits = 3, col.names = c("都道府県", "人口10万対専門医数", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
-率が最も高いのは長崎県(`r round(pref_lisa_gi$rate_care[pref_lisa_gi$pref_name == "長崎県"], 2)`)ですが、**率で`r pref_lisa_gi$rank_care[pref_lisa_gi$pref_name == "東京都"]`位の東京都(`r round(pref_lisa_gi$rate_care[pref_lisa_gi$pref_name == "東京都"], 2)`)は、LISA分類が`r pref_lisa_gi$quadrant[pref_lisa_gi$pref_name == "東京都"]`(空間的アウトライヤー)、Gi\* z値も`r round(pref_lisa_gi$gi_z[pref_lisa_gi$pref_name == "東京都"], 3)`とhot spot閾値1.96を大きく下回ります。** 東京都に隣接する埼玉県・千葉県・神奈川県の率が東京都ほど高くないため、[ハンズオン①](01-map-moran-lisa-gi.md)のB市(架空10市町村)と同じ理由で、周囲が低い単独の高値として扱われます。
+人口10万対専門医数が最も高いのは長崎県(`r round(pref_lisa_gi$rate_care[pref_lisa_gi$pref_name == "長崎県"], 2)`)ですが、**人口10万対専門医数で`r pref_lisa_gi$rank_care[pref_lisa_gi$pref_name == "東京都"]`位の東京都(`r round(pref_lisa_gi$rate_care[pref_lisa_gi$pref_name == "東京都"], 2)`)は、LISA分類が`r pref_lisa_gi$quadrant[pref_lisa_gi$pref_name == "東京都"]`(空間的アウトライヤー)、Gi\* z値も`r round(pref_lisa_gi$gi_z[pref_lisa_gi$pref_name == "東京都"], 3)`とhot spot閾値1.96を大きく下回ります。** 東京都に隣接する埼玉県・千葉県・神奈川県の人口10万対専門医数が東京都ほど高くないため、[ハンズオン①](01-map-moran-lisa-gi.md)のB市(架空10市町村)と同じ理由で、周囲が低い単独の高値として扱われます。
 
 対照的に、**長崎県は`r pref_lisa_gi$quadrant[pref_lisa_gi$pref_name == "長崎県"]`、Gi\* z値`r round(pref_lisa_gi$gi_z[pref_lisa_gi$pref_name == "長崎県"], 3)`で、都道府県レベルでもhot spot閾値を超えます。** `r nagasaki_neighbor_text`
 
@@ -370,7 +370,7 @@ pref_lisa_gi |>
 pref_hotspots <- pref_lisa_gi |> filter(gi_z > 1.96)
 pref_hotspots |>
   dplyr::select(pref_name, rate_care, gi_z) |>
-  knitr::kable(digits = 3, col.names = c("都道府県", "率", "Gi* z値"))
+  knitr::kable(digits = 3, col.names = c("都道府県", "人口10万対専門医数", "Gi* z値"))
 ```
 
 都道府県レベルでGi\*がhot spotとして検出するのは、この`r nrow(pref_hotspots)`県(`r paste(pref_hotspots$pref_name, collapse = "・")`)だけです。ここで疑問が生まれます——**「都道府県レベルでは目立たない東京都」は、二次医療圏まで単位を細かくしても本当に目立たないままなのでしょうか。** 「都道府県レベルでhot spotになった県」と「ならなかった東京都」を、それぞれ二次医療圏に割ったときの中身を見て確認します。
@@ -400,7 +400,7 @@ nagasaki <- iryoken2_lisa_gi |>
 
 nagasaki |>
   dplyr::select(area_name, rate_care, quadrant, local_p, gi_z) |>
-  knitr::kable(digits = 3, col.names = c("二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
+  knitr::kable(digits = 3, col.names = c("二次医療圏", "人口10万対専門医数", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
 ```{r nagasaki-counts}
@@ -410,7 +410,7 @@ nagasaki_hh <- nagasaki |> filter(quadrant == "High-High")
 nagasaki_iso <- nagasaki |> filter(isolated)
 nagasaki_iso_zero <- nagasaki_iso |> filter(rate_care == 0)
 nagasaki_iso_nonzero <- nagasaki_iso |> filter(rate_care > 0)
-# 本文は「孤立しているが率は0でない医療圏」を1件だけ引き合いに出す構成なので、
+# 本文は「孤立しているが人口10万対専門医数は0でない医療圏」を1件だけ引き合いに出す構成なので、
 # その前提が崩れたら文が黙って矛盾するのではなく、ここで落とす。
 stopifnot(nrow(nagasaki_iso_nonzero) == 1)
 # 「県内でも中位」という位置づけもハードコードせず、県内順位として出す。
@@ -431,7 +431,7 @@ nrow(nagasaki_hh)
 n_nagasaki_hh_hotspot
 ```
 
-長崎県内では、`r paste(nagasaki_hh$area_name, collapse = "・")`の`r nrow(nagasaki_hh)`医療圏がHigh-Highに分類され、うち`r n_nagasaki_hh_hotspot`医療圏がGi\*でもhot spot閾値を超えます。局所p値0.05未満で絞ると、有意なHigh-Highは`r nrow(nagasaki_hh_sig)`医療圏(`r paste(nagasaki_hh_sig$area_name, collapse = "・")`)に減ります——**`r nagasaki_hh_nonsig$area_name`はHigh-Highに分類されてはいるものの、その分類自体が有意ではなく(局所p値`r round(nagasaki_hh_nonsig$local_p, 3)`)、ちょうどGi\*の閾値も下回っています**(z値`r round(nagasaki_hh_nonsig$gi_z, 3)`)。これは、後で東京都(Step 4後半)でも確認することになる同じ構造です——HH分類が有意でない唯一の医療圏が、ちょうどGi\*の閾値も下回ります。[ハンズオン①の「有意性についての注意」](01-map-moran-lisa-gi.md)がそのまま当てはまる例です。残る**`r paste(nagasaki_iso$area_name, collapse = "・")`の`r nrow(nagasaki_iso)`医療圏は隣接0件のため、LISA分類・Gi\*とも計算が成立せずNAになります**。`r paste(nagasaki_iso_zero$area_name, collapse = "・")`は率も0ですが、**`r nagasaki_iso_nonzero$area_name`は率`r round(nagasaki_iso_nonzero$rate_care, 2)`と長崎県内`r nrow(nagasaki)`医療圏中`r nagasaki_iso_rank`位の値でありながら、隣が1つも無いというだけの理由でLISA・Gi\*とも分類できません**——孤立地域の扱いが「率が低いから」ではなく「隣接の定義上たまたま孤立しているから」という、率の高低とは別の理由で効くことの一例です。**都道府県レベルの「長崎県はhot spot」という結論は、二次医療圏まで割っても崩れません** — 内部の主要医療圏がそろって高い値を示しているため、粗い単位でも細かい単位でも同じ結論になります。
+長崎県内では、`r paste(nagasaki_hh$area_name, collapse = "・")`の`r nrow(nagasaki_hh)`医療圏がHigh-Highに分類され、うち`r n_nagasaki_hh_hotspot`医療圏がGi\*でもhot spot閾値を超えます。局所p値0.05未満で絞ると、有意なHigh-Highは`r nrow(nagasaki_hh_sig)`医療圏(`r paste(nagasaki_hh_sig$area_name, collapse = "・")`)に減ります——**`r nagasaki_hh_nonsig$area_name`はHigh-Highに分類されてはいるものの、その分類自体が有意ではなく(局所p値`r round(nagasaki_hh_nonsig$local_p, 3)`)、ちょうどGi\*の閾値も下回っています**(z値`r round(nagasaki_hh_nonsig$gi_z, 3)`)。これは、後で東京都(Step 4後半)でも確認することになる同じ構造です——HH分類が有意でない唯一の医療圏が、ちょうどGi\*の閾値も下回ります。[ハンズオン①の「有意性についての注意」](01-map-moran-lisa-gi.md)がそのまま当てはまる例です。残る**`r paste(nagasaki_iso$area_name, collapse = "・")`の`r nrow(nagasaki_iso)`医療圏は隣接0件のため、LISA分類・Gi\*とも計算が成立せずNAになります**。`r paste(nagasaki_iso_zero$area_name, collapse = "・")`は人口10万対専門医数も0ですが、**`r nagasaki_iso_nonzero$area_name`は人口10万対専門医数`r round(nagasaki_iso_nonzero$rate_care, 2)`と長崎県内`r nrow(nagasaki)`医療圏中`r nagasaki_iso_rank`位の値でありながら、隣が1つも無いというだけの理由でLISA・Gi\*とも分類できません**——孤立地域の扱いが「人口10万対専門医数が低いから」ではなく「隣接の定義上たまたま孤立しているから」という、人口10万対専門医数の高低とは別の理由で効くことの一例です。**都道府県レベルの「長崎県はhot spot」という結論は、二次医療圏まで割っても崩れません** — 内部の主要医療圏がそろって高い値を示しているため、粗い単位でも細かい単位でも同じ結論になります。
 
 次に東京都(都道府県レベルではhot spotでなかった)の内訳です。
 
@@ -442,7 +442,7 @@ tokyo <- iryoken2_lisa_gi |>
 
 tokyo |>
   dplyr::select(area_name, rate_care, quadrant, local_p, gi_z) |>
-  knitr::kable(digits = 3, col.names = c("二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
+  knitr::kable(digits = 3, col.names = c("二次医療圏", "人口10万対専門医数", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
 ```{r tokyo-hotspot-count}
@@ -511,13 +511,13 @@ nrow(tokyo_highhigh_sig)
 
 LISAでHigh-Highに分類されるのは`r nrow(tokyo_highhigh)`医療圏、`r tokyo_count_text`。**ただしこれは局所p値を無視した無補正の一致であり、中身まで同じではありません。** 局所p値0.05未満で絞ると、有意なHigh-Highは`r nrow(tokyo_highhigh_sig)`医療圏に減ります。**この有意なHigh-High`r nrow(tokyo_highhigh_sig)`医療圏は、すべてGi\*でもhot spotと判定されています。** Gi\*はさらに`r gi_not_hh_row$area_name`(LISA分類は`r gi_not_hh_row$quadrant``r gi_not_hh_note`、局所p値`r round(gi_not_hh_row$local_p, 3)`)を1件多く拾います——LISAとGi\*は別の問いに対する別の答えなので、これは矛盾ではなく、Gi\*が「自分と周囲の関係の分類」ではなく「塊」という別の角度から検出した結果です。
 
-唯一の「High-Highだがhot spotでない」医療圏である`r hh_not_gi_row$area_name`(Gi\* z値`r round(hh_not_gi_row$gi_z, 3)`)は、**そもそもHigh-High分類自体が有意ではありません**(局所p値`r round(hh_not_gi_row$local_p, 3)`)。つまりこれは「LISAはHigh-Highと言っているのにGi\*が否定した」例ではなく、**①が説明した『LISA分類は有意性を含まない』をそのまま体現した実例です。** それでもGi\*でhot spotと判定された`r nrow(tokyo_gi_hotspots)`医療圏はいずれも都心部に集まっており、z値の最大は`r tokyo$area_name[1]`のz = `r round(tokyo$gi_z[1], 2)`です。**都道府県という単位では「東京都1件」として埼玉県・千葉県・神奈川県という比較的率の低い隣県と平均され、周囲より浮いた単独の高値に見えていましたが、二次医療圏まで単位を細かくすると、都心部の複数の医療圏がGi\*でもhot spotとして検出されることが分かります。**
+唯一の「High-Highだがhot spotでない」医療圏である`r hh_not_gi_row$area_name`(Gi\* z値`r round(hh_not_gi_row$gi_z, 3)`)は、**そもそもHigh-High分類自体が有意ではありません**(局所p値`r round(hh_not_gi_row$local_p, 3)`)。つまりこれは「LISAはHigh-Highと言っているのにGi\*が否定した」例ではなく、**①が説明した『LISA分類は有意性を含まない』をそのまま体現した実例です。** それでもGi\*でhot spotと判定された`r nrow(tokyo_gi_hotspots)`医療圏はいずれも都心部に集まっており、z値の最大は`r tokyo$area_name[1]`のz = `r round(tokyo$gi_z[1], 2)`です。**都道府県という単位では「東京都1件」として埼玉県・千葉県・神奈川県という比較的人口10万対専門医数の低い隣県と平均され、周囲より浮いた単独の高値に見えていましたが、二次医療圏まで単位を細かくすると、都心部の複数の医療圏がGi\*でもhot spotとして検出されることが分かります。**
 
 これがMAUPの scale effect の核心です。**同じ場所・同じデータでも、集計の粗さを変えるだけで「hot spotである/ない」という結論そのものが入れ替わります。** しかも東京都の場合、この先のStep 6で確認する分子系列の感度チェックでもこの分類は揺らぎません——**東京都が都道府県レベルでhot spotにならないのは、分子の定義(care/all/official)のせいではなく、単位の粗さそのものが原因です。**
 
 ### 地図で確認する: 都道府県 vs 二次医療圏のGi\* z値
 
-ここまで表で見てきたGi\*の検出結果を、Step 2の率の地図と同じ考え方(2枚で色の基準を揃える)で地図にします。連続量のまま塗るとhot spot閾値(1.96)がどこにあるか読み取りにくいため、**「hot spot(z > 1.96)」「非有意」「cold spot(z < -1.96)」「孤立(NA)」の4区分**に離散化します。都道府県・二次医療圏のどちらにも `cold spot` に該当する区域が1件も無かったため(次の地図で確認します)、2枚とも凡例には3区分(hot spot・非有意・孤立(NA))しか出ません——これは描画漏れではなく、**「集中して低い地域は無かった」という結果そのもの**です。色の対応(`gi_cat_colors`)は固定した名前付きベクトルで2枚共通にしてあるので、同じラベルは必ず同じ色になります。
+ここまで表で見てきたGi\*の検出結果を、Step 2の人口10万対専門医数の地図と同じ考え方(2枚で色の基準を揃える)で地図にします。連続量のまま塗るとhot spot閾値(1.96)がどこにあるか読み取りにくいため、**「hot spot(z > 1.96)」「非有意」「cold spot(z < -1.96)」「孤立(NA)」の4区分**に離散化します。都道府県・二次医療圏のどちらにも `cold spot` に該当する区域が1件も無かったため(次の地図で確認します)、2枚とも凡例には3区分(hot spot・非有意・孤立(NA))しか出ません——これは描画漏れではなく、**「集中して低い地域は無かった」という結果そのもの**です。色の対応(`gi_cat_colors`)は固定した名前付きベクトルで2枚共通にしてあるので、同じラベルは必ず同じ色になります。
 
 ```{r gi-map-data}
 # 凡例のラベルは短く保つ(「Cold spot(z < -1.96)」のように長いラベルを使うと
@@ -774,14 +774,14 @@ tokyo_sensitivity |>
 pref_lisa_gi |>
   filter(isolated) |>
   dplyr::select(pref_name, rate_care, quadrant, local_p, gi_z) |>
-  knitr::kable(digits = 3, col.names = c("都道府県", "率", "LISA分類", "局所p値", "Gi* z値"))
+  knitr::kable(digits = 3, col.names = c("都道府県", "人口10万対専門医数", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
 ```{r isolated-regions-table-iryoken2}
 iryoken2_lisa_gi |>
   filter(isolated) |>
   dplyr::select(pref_name, area_name, rate_care, quadrant, local_p, gi_z) |>
-  knitr::kable(digits = 3, col.names = c("都道府県", "二次医療圏", "率", "LISA分類", "局所p値", "Gi* z値"))
+  knitr::kable(digits = 3, col.names = c("都道府県", "二次医療圏", "人口10万対専門医数", "LISA分類", "局所p値", "Gi* z値"))
 ```
 
 ```{r isolated-effect-on-global-moran}
