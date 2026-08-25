@@ -78,9 +78,9 @@ rmarkdown::render("analysis/handson/00-setup.Rmd")
 
 ## 動作確認: 架空10市町村データを読む
 
-環境が整っているか確認するために、架空の10市町村データ(`data/simulated/toy10_areas.csv`)を読み込み、人口10万対罹患率を横棒グラフにします。このデータは①〜③のハンズオンでも共通して使う、教材の概念パートに登場する架空データです。
+環境が整っているか確認するために、架空の10市町村データ(`data/simulated/toy10_areas.csv`)を読み込み、人口10万対患者数を横棒グラフにします。このデータは①〜③のハンズオンでも共通して使う、教材の概念パートに登場する架空データです。
 
-```{r toy10-rate, fig.alt="架空10市町村の人口10万対罹患率の横棒グラフ。B市が人口10万対300で最も高く、A市・D市・F市・G市・J市は人口10万対100で並んで最も低い。"}
+```{r toy10-rate, fig.alt="架空10市町村の人口10万対患者数の横棒グラフ。B市が人口10万対300で最も高く、A市・D市・F市・G市・J市は人口10万対100で並んで最も低い。"}
 library(dplyr)
 
 toy10 <- read.csv("data/simulated/toy10_areas.csv", fileEncoding = "UTF-8")
@@ -92,9 +92,9 @@ ggplot(toy10, aes(x = area_name, y = rate_per_100k)) +
   geom_col(fill = "#2b6cb0") +
   coord_flip() +
   labs(
-    title = "架空10市町村の人口10万対罹患率",
+    title = "架空10市町村の人口10万対患者数",
     x = "市町村",
-    y = "人口10万対罹患率"
+    y = "人口10万対患者数"
   )
 ```
 
