@@ -5,7 +5,7 @@
  *
  * ページ側の契約:
  *   <div data-quiz-src="../../assets/data/quiz-ch1.json" data-quiz-gate="ch1"></div>
- *   - data-quiz-gate が無い場合は自己チェック(合否表示はするが合格保存はしない)
+ *   - data-quiz-gate が無い場合は事前テスト(合否表示はするが合格保存はしない)
  *   - data-quiz-gate がある場合は章末クイズ(合格をlocalStorageに保存する)
  *
  * 実装方針:
@@ -319,13 +319,13 @@
 
     clearSummary(summary, summaryStatus);
     summary.removeAttribute("hidden");
-    // 自己チェック(gateなし)は合否を持たないため合格ラインを表示しない。
+    // 事前テスト(gateなし)は合否を持たないため合格ラインを表示しない。
     // 外枠を表示してから永続的な status 要素を更新し、ライブ通知を確実に発火させる。
     summaryStatus.textContent = gate
       ? T.scoreWithGate(correctCount, entries.length, passLine)
       : T.scoreNoGate(correctCount, entries.length);
 
-    // 不正解一覧はgateの有無(章末クイズ/自己チェック)を問わず表示する。
+    // 不正解一覧はgateの有無(章末クイズ/事前テスト)を問わず表示する。
     if (incorrectNums.length > 0) {
       var incorrectP = el("p", { className: "spepi-quiz-incorrect-list" });
       renderQuestionListMessage(incorrectP, T.incorrectListPrefix, instanceId, incorrectNums);
