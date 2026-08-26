@@ -103,6 +103,7 @@ nav:
   # 別グループにして「4本目のハンズオン」に見えないようにしている。
   - 資料:
       - handson/04-case-study.md
+  - 参考文献: references.md
   - 修了証: certificate.md
   - このサイトについて:
       - about.md

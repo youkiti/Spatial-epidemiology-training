@@ -20,6 +20,7 @@
 - Rハンズオン②「CAR / BYM」（`CARBayes` 採用）を追加し、`renv::restore()` を修復（issue #19、PR #36）
 - Rハンズオン③「MAUP の実演 — 都道府県 vs 二次医療圏」を追加（issue #20、PR #35）
 - リリース手順書（`RELEASE.md`）・変更履歴（`CHANGELOG.md`）・引用情報（`CITATION.cff`）を追加（issue #55）
+- 総説4本と実例論文2本の書誌・DOI・PMIDをまとめた `docs/references.md` を追加（参考文献ページ）
 
 ### 変更
 
