@@ -32,7 +32,6 @@
   <title>queen contiguity と rook contiguity の比較。3×3マスの中央セルを基準に、queenでは周囲8マス、rookでは上下左右4マスが隣になる</title>
   <text x="89" y="16" text-anchor="middle" font-size="13" fill="currentColor">queen contiguity(8方向)</text>
   <text x="267" y="16" text-anchor="middle" font-size="13" fill="currentColor">rook contiguity(4方向)</text>
-  <!-- queen grid: origin (20,34), cell 42, gap 6, step 48 -->
   <g>
     <rect x="20" y="34" width="42" height="42" fill="currentColor" fill-opacity="0.15" stroke="currentColor"/>
     <rect x="68" y="34" width="42" height="42" fill="currentColor" fill-opacity="0.15" stroke="currentColor"/>
@@ -53,7 +52,6 @@
     <text x="89" y="156" text-anchor="middle" font-size="15" fill="currentColor">1</text>
     <text x="137" y="156" text-anchor="middle" font-size="15" fill="currentColor">1</text>
   </g>
-  <!-- rook grid: origin (198,34) -->
   <g>
     <rect x="198" y="34" width="42" height="42" fill="none" stroke="currentColor"/>
     <rect x="246" y="34" width="42" height="42" fill="currentColor" fill-opacity="0.15" stroke="currentColor"/>
