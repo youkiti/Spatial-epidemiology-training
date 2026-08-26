@@ -135,6 +135,7 @@ pip install -r requirements-data.txt        # データを取り直す・作り�
 - **`theme.features` に `navigation.instant` を入れない。** 全JSがフルページロード前提の初期化のため、SPA的ページ遷移では描画されなくなる
 - **`extra_javascript` の読み込み順は依存順**（`storage.js` → `quiz.js` → `progress.js`）。変えない
 - **クイズはページとJSをデータ属性で疎結合にする契約。** `data-quiz-gate` **無し**=事前テスト（合否は出すが保存しない）、**有り**=章末クイズ（合格を localStorage に保存）。`data-quiz-src` のパスは directory URL 基準の相対。**事前テストのJSONファイル名は `quiz-chN-selfcheck.json` のまま**（呼称を「自己チェック」から「事前テスト」に変えた際も、歴史的経緯でファイル名は改名していない）
+- **章のクイズ見出しを変えたら `docs/how-to-use.md` §「クイズの位置づけ」も必ず同じコミットで直す。** このページは見出し名（「事前テスト」など）と配置（「章の冒頭」）を読者向けに文章で引用しているため、**呼称の grep（「自己チェック」など）では掛からず、`mkdocs build --strict` も `quiz_lint.py` も通る**。PR #77 と PR #78 で2回連続して後追い修正になった
 - **クイズJSONスキーマは ai-kotohajime と同一に保つ**: `{title, passRatio, questions:[{q, choices[4], answer, explanation}]}`。**`answer` は 0-origin**
 - **`extra.css` にハードコード色を足すときは、ダーク（slate）配色の上書きも必ず併せて書く。** 特に文字色は暗背景でコントラストが落ちる
 - **Material のスキーム別 CSS 変数を上書きするときは特異度を先に測る。** ライトの `--md-typeset-a-color` は `:root,[data-md-color-scheme=default]` が特異度 (0,1,0) で定義するが、**ダークは `[data-md-color-scheme=slate][data-md-color-primary=teal]` で (0,2,0)**。つまり上の「slate 側も併記する」に従って `[data-md-color-scheme="slate"] { ... }` とだけ書くと Material に負けて**無言で効かない**（ビルドも通るし警告も出ない）。primary 属性まで書いて特異度を合わせること。issue #33 で実測（`site/assets/stylesheets/palette.*.min.css` を grep すれば実際の定義が読める）
