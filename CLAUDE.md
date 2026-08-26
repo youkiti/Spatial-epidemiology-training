@@ -34,14 +34,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 documents/       設計の正本3文書。実装より先にここを読む
 docs/            MkDocs のサイトソース。ここに置いたものは公開される
-  concepts/      概念パート6章（issue #10〜#15 で執筆済み。各章に自己チェック3問＋章末クイズ10問。章4のみ12問）
+  concepts/      概念パート6章（issue #10〜#15 で執筆済み。各章に事前テスト3問＋章末クイズ10問。章4のみ12問）
   handson/       Rハンズオン。00〜03 は analysis/handson/*.Rmd からの生成物
                  （#17〜#20）。04-case-study.md だけは Rmd 由来ではない手書きの
                  「資料」ページ（ハンズオン本編ではない）
     figures/     Rmd から生成した図。コミット対象
     rmd/         配布用 .Rmd コピー。ページ末尾からダウンロードできる。生成物
   assets/js/     クイズエンジン（storage.js → quiz.js → progress.js）
-  assets/data/   クイズJSON（全6章分。`quiz-chN-selfcheck.json` と `quiz-chN.json`）
+  assets/data/   クイズJSON（全6章分。`quiz-chN-selfcheck.json` と `quiz-chN.json`。前者は
+                 事前テスト用だが、ファイル名は移行前の呼称（自己チェック）のまま据え置いている）
   memo.md        ユーザーとの対話ログ。exclude_docs でサイトからは除外している
 scripts/         quiz_lint.py（作問の機械チェック）、simulate_spatial_data.py と
                  verify_simulation.py（合成データの生成と検証。issue #6）、
@@ -133,7 +134,7 @@ pip install -r requirements-data.txt        # データを取り直す・作り�
 
 - **`theme.features` に `navigation.instant` を入れない。** 全JSがフルページロード前提の初期化のため、SPA的ページ遷移では描画されなくなる
 - **`extra_javascript` の読み込み順は依存順**（`storage.js` → `quiz.js` → `progress.js`）。変えない
-- **クイズはページとJSをデータ属性で疎結合にする契約。** `data-quiz-gate` **無し**=自己チェック（合否は出すが保存しない）、**有り**=章末クイズ（合格を localStorage に保存）。`data-quiz-src` のパスは directory URL 基準の相対
+- **クイズはページとJSをデータ属性で疎結合にする契約。** `data-quiz-gate` **無し**=事前テスト（合否は出すが保存しない）、**有り**=章末クイズ（合格を localStorage に保存）。`data-quiz-src` のパスは directory URL 基準の相対。**事前テストのJSONファイル名は `quiz-chN-selfcheck.json` のまま**（呼称を「自己チェック」から「事前テスト」に変えた際も、歴史的経緯でファイル名は改名していない）
 - **クイズJSONスキーマは ai-kotohajime と同一に保つ**: `{title, passRatio, questions:[{q, choices[4], answer, explanation}]}`。**`answer` は 0-origin**
 - **`extra.css` にハードコード色を足すときは、ダーク（slate）配色の上書きも必ず併せて書く。** 特に文字色は暗背景でコントラストが落ちる
 - **Material のスキーム別 CSS 変数を上書きするときは特異度を先に測る。** ライトの `--md-typeset-a-color` は `:root,[data-md-color-scheme=default]` が特異度 (0,1,0) で定義するが、**ダークは `[data-md-color-scheme=slate][data-md-color-primary=teal]` で (0,2,0)**。つまり上の「slate 側も併記する」に従って `[data-md-color-scheme="slate"] { ... }` とだけ書くと Material に負けて**無言で効かない**（ビルドも通るし警告も出ない）。primary 属性まで書いて特異度を合わせること。issue #33 で実測（`site/assets/stylesheets/palette.*.min.css` を grep すれば実際の定義が読める）
