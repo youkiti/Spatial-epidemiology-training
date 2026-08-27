@@ -40,16 +40,16 @@ rmarkdown::render("analysis/handson/00-setup.Rmd")
 
 ①〜③が扱うのは**面データ(areal data)**です — 地域を単位に、1行1地域で値が並ぶ形です。ただし、境界データ(ポリゴン)を実際に読み込むのは②③だけです。①は架空データを規則格子(行・列)として扱うため`sf::st_read()`を呼ばず、地図も`geom_tile()`で描きます。「面データであること」と「ポリゴンファイルを読むこと」は別の話です。
 
-②③が用意するものは2つだけです: **属性テーブル**(地域ごとの値。CSV)と**境界データ**(地域ごとのポリゴン。GeoJSON など)。この2つを**地域コード**で1:1に結合する、というのが準備工程の全体像です。
+境界データに属性を結合して地図を描く場面で必要になるのはこの2つだけです: **属性テーブル**(地域ごとの値。CSV)と**境界データ**(地域ごとのポリゴン。GeoJSON など)。この2つを**地域コード**で1:1に結合する、というのがこの場面の準備工程です。②③の解析全体はこれ以外にも入力を読みます — 人口(分母)や、地域どうしの隣接関係を書いた隣接エッジ一覧というファイルも読んでいます。
 
 このリポジトリの実物で示すと:
 
 - 境界: `data/geo/iryoken2.geojson`(339区域)。属性列は `area_code, area_name, pref_code, pref_name, boundary_source` と `geometry`。
 - 属性: `data/processed/specialists_iryoken2.csv`。列は `iryoken2_code, iryoken2_name, pref_name, n_specialists_care, n_specialists_all`。
 
-**キーの列名が両者で違います**(`area_code` と `iryoken2_code`)。そのため結合するときは `dplyr::left_join(..., by = c("area_code" = "iryoken2_code"))` のように対応を明示します。ハンズオン②③が実際にやっているのはこの結合です。
+**キーの列名が両者で違います**(`area_code` と `iryoken2_code`)。そのため結合するときは `by = c("area_code" = "iryoken2_code")` のようにキーの対応を明示します。ハンズオン②が境界に属性を結合しているのがこの形です(使う関数が `left_join()` か `inner_join()` かは場面によりますが、キーの対応を明示する点は同じです)。
 
-**ここにゼロ埋めコードの罠があります。** 地域コードは `"0101"` のようなゼロ埋めの文字列です。`read.csv("data/processed/specialists_iryoken2.csv")` を既定のまま呼ぶと、`iryoken2_code` は integer 型として読まれ、値は `101, 102, 103` のように先頭のゼロが落ちてしまいます。この状態では境界側の `"0101"`(character)と型が食い違い、`left_join()` はその場で `Can't join ... due to incompatible types` というエラーを出して止まります(全行 `NA` になって通ってしまうわけではありません)。②③が `read.csv(..., colClasses = c(iryoken2_code = "character"))` のようにキー列を名指しして文字列として読んでいるのはこのためです(`colClasses = "character"` を全列に指定すると `n_specialists_care` のような数値列まで文字列になってしまうため、キー列だけを名指しします)。
+**ここにゼロ埋めコードの罠があります。** 地域コードは `"0101"` のようなゼロ埋めの文字列です。`read.csv("data/processed/specialists_iryoken2.csv")` を既定のまま呼ぶと、`iryoken2_code` は integer 型として読まれ、値は `101, 102, 103` のように先頭のゼロが落ちてしまいます。この状態では境界側の `"0101"`(character)と型が食い違い、`left_join()` はその場で `Can't join ... due to incompatible types` というエラーを出して止まります(全行 `NA` になって通ってしまうわけではありません)。この罠を避けるやり方は②③で違います。②は `read.csv(..., colClasses = c(iryoken2_code = "character"))` のように**キー列を名指しして**文字列として読みます。③は `read.csv(..., colClasses = c("character", "character", "character", "integer", "integer"))` のように**全5列の型を位置で指定**します。`colClasses = "character"` を全列に指定すると `n_specialists_care` のような数値列まで文字列になってしまうため、②はキー列だけを名指しし、③は4・5列目を `integer` に指定することでこれを避けています。
 
 一方 `sf::st_read("data/geo/iryoken2.geojson")` は GeoJSON 自体が型情報を持つため、`area_code` を最初から character(`"0101"`)として返します。③の `iryoken2_sf$area_code <- as.character(iryoken2_sf$area_code)` は、**結合キーの型を両側で文字列に揃えておくための念押し**であり、`st_read()` が数値を返すから必要になっているわけではありません(実測でも character で返ってきます)。同様の注意は `data/geo/README.md` にもあります。
 
@@ -57,7 +57,7 @@ rmarkdown::render("analysis/handson/00-setup.Rmd")
 
 ### sf オブジェクトは data.frame に geometry 列が付いたもの
 
-`sf::st_read()` の戻り値のクラスは `c("sf", "data.frame")` です。つまり、ふつうの data.frame に `geometry` という列が1つ増えただけのオブジェクトであり、`left_join()` / `mutate()` / `filter()` / `rbind()` のような dplyr の操作がそのまま使えます。②③が `st_read()` の結果をいきなり dplyr で加工しているのはこのためです。
+`sf::st_read()` の戻り値のクラスは `c("sf", "data.frame")` です。つまり、ふつうの data.frame に `geometry` という列が1つ増えただけのオブジェクトであり、`left_join()` / `mutate()` / `filter()` / `bind_rows()` のような dplyr の操作がそのまま使えます。②③が `st_read()` の結果をいきなり dplyr で加工しているのはこのためです。
 
 **`dplyr::select()` で `geometry` を選ばなくても、`geometry` 列は残ります**(sticky geometry と呼ばれる sf の挙動です)。例えば、339区域・6列の sf オブジェクトに `dplyr::select(area_code)` を適用すると、結果は `area_code` と `geometry` の2列になり、クラスも `c("sf", "data.frame")` のままです。ハンズオン②が `dplyr::select(area_code)` した後でも地図を描けているのは、この挙動によります。
 
