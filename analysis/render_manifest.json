@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-26T06:28:04+0900",
+    "generated_at": "2026-08-27T11:47:14+0900",
     "r_version": "4.5.2",
     "pandoc_version": "3.8.3"
   },
@@ -8,15 +8,15 @@
     "00-setup": {
       "source_rmd": {
         "path": "analysis/handson/00-setup.Rmd",
-        "sha256": "542746e0dce096b6f70e0e85608adaf2235442df9afb1077d5d5402e94e3b6ce"
+        "sha256": "efc3a248ad1a897f3ca8afe13cb2a24b230ff2a2bbabb76ce2c187f1055b0ca5"
       },
       "output_md": {
         "path": "docs/handson/00-setup.md",
-        "sha256": "4f971e812224b4fdc8db8ef2d13b50a55cf82125bb37a37b1d175e4dc0a3541e"
+        "sha256": "330be69f048dcf1d6af4798768dbfaf31c59536b950cd75125757a1fc7a29410"
       },
       "distributed_rmd": {
         "path": "docs/handson/rmd/00-setup.Rmd",
-        "sha256": "542746e0dce096b6f70e0e85608adaf2235442df9afb1077d5d5402e94e3b6ce"
+        "sha256": "efc3a248ad1a897f3ca8afe13cb2a24b230ff2a2bbabb76ce2c187f1055b0ca5"
       },
       "data_inputs": [
         {
