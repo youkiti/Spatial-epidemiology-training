@@ -1,0 +1,34 @@
+<svg viewBox="0 0 810 235" width="810" xmlns="http://www.w3.org/2000/svg" font-family="Hiragino Kaku Gothic ProN, Hiragino Sans, Yu Gothic, Meiryo, IPAPGothic, sans-serif">
+<title>モデルごとの項の有無(修正案)</title>
+<desc>3つのモデル(通常のPoisson回帰、CARモデル、BYMモデル)を行に、切片・説明変数・空間相関成分(CAR)・非構造化誤差の4項を列にとった模式図の修正案。行ラベルを「CARモデル(空間相関成分のみ)」「BYMモデル(CAR成分+非構造化誤差)」に改め、BYMがCAR成分を核にCAR系モデルの一種であることが行ラベルだけで読めるようにした。塗りつぶされた四角はその項を持つことを、破線の空の四角は持たないことを示す。</desc>
+<rect x="0" y="0" width="810" height="235" fill="#ffffff"/>
+<g font-size="15" fill="#1a1a1a">
+<text x="280" y="24" text-anchor="middle">切片</text>
+<text x="430" y="24" text-anchor="middle">説明変数</text>
+<text x="580" y="24" text-anchor="middle">空間相関(CAR)</text>
+<text x="730" y="24" text-anchor="middle">非構造化誤差</text>
+</g>
+<g font-size="13" fill="#1a1a1a">
+<text x="10" y="70">通常のPoisson回帰</text>
+<text x="10" y="140">CARモデル(空間相関成分のみ)</text>
+<text x="10" y="210">BYMモデル(CAR成分+非構造化誤差)</text>
+</g>
+<g transform="translate(0,45)">
+<rect x="250" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="400" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="550" y="0" width="60" height="34" fill="none" stroke="#4d4d4d" stroke-dasharray="4 3"/>
+<rect x="700" y="0" width="60" height="34" fill="none" stroke="#4d4d4d" stroke-dasharray="4 3"/>
+</g>
+<g transform="translate(0,115)">
+<rect x="250" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="400" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="550" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="700" y="0" width="60" height="34" fill="none" stroke="#4d4d4d" stroke-dasharray="4 3"/>
+</g>
+<g transform="translate(0,185)">
+<rect x="250" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="400" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="550" y="0" width="60" height="34" fill="#4d4d4d"/>
+<rect x="700" y="0" width="60" height="34" fill="#4d4d4d"/>
+</g>
+</svg>
