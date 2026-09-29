@@ -213,7 +213,7 @@ pip install -r requirements-data.txt        # データを取り直す・作り�
 | Node / npm | 22.21.0 / 10.9.4 |
 | Python | 3.11.9 |
 
-サイト側の依存は `requirements.txt` にピン留め済み（mkdocs 1.6.1 / mkdocs-material 9.7.6 / mkdocs-git-revision-date-localized-plugin 1.5.3）。**CI に R は入れない** — Rmd は事前レンダリングして成果物をコミットする。
+サイト側の依存は `requirements.txt` にピン留め済み（mkdocs 1.6.1 / mkdocs-material 9.7.7 / mkdocs-git-revision-date-localized-plugin 1.5.3）。**CI に R は入れない** — Rmd は事前レンダリングして成果物をコミットする。
 
 R パッケージ:
 
