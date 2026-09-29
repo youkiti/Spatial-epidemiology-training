@@ -38,7 +38,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # 必須。git-revision-date-localized プラグインは各ページの最終更新日時を
           # git履歴から取得する。shallow clone(既定の fetch-depth: 1)だと履歴が無く、
@@ -48,7 +48,7 @@ jobs:
           # 日時だけが静かに壊れる。だから明示的に必要(deploy-pages.yml と同じ理由)。
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
