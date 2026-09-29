@@ -5,11 +5,11 @@ name: Weekly dependency check
 # 一時的な事情でPRのマージがブロックされることを避けるため。
 #
 # ジョブを3本に分けている(1本にまとめない):
-#   - pip-audit は「既知脆弱性の検知」がジョブの役目そのものなので、赤くなることが
-#     ある(むしろ正常)。continue-on-error にはしない。
+#   - pip-audit は「既知脆弱性の検知」がジョブの役目そのものなので、新しい脆弱性が
+#     公表された週に赤くなる(それが検知の成功)。continue-on-error にはしない。
 #   - install-test-linux / install-test-windows-arm は「クリーンインストールできるか」
-#     という別の観点の試験。pip-audit の既知の赤(下記参照)がこの試験の結果を
-#     覆い隠さないように、ジョブを分けて独立に緑/赤を見られるようにしている。
+#     という別の観点の試験。pip-audit の赤がこの試験の結果を覆い隠さないように、
+#     ジョブを分けて独立に緑/赤を見られるようにしている。
 on:
   schedule:
     # 毎週火曜 03:41 UTC(= 火曜 12:41 JST)。external-links.yml が月曜 00:17 UTC を
@@ -24,11 +24,11 @@ permissions:
 jobs:
   # requirements.txt と requirements-data.txt の既知脆弱性を pip-audit で見る。
   #
-  # 重要な既知の状態: このジョブは issue #45 が解決するまで赤になるのが正常。
-  # 2026-08-21 時点の実測で requirements-data.txt に既知脆弱性が3件ある
-  # (requests 2.32.5 → PYSEC-2026-2275、pdfminer.six 20250506 → PYSEC-2026-1762 /
-  # PYSEC-2026-1761。いずれも修正版が出ている: requests 2.33.0、pdfminer.six は
-  # 20251107 または 20251230)。requirements.txt 側は同日時点で0件。
+  # 通常は緑(両ファイルとも既知脆弱性0件)。赤になったら、固定している版に新しい
+  # 脆弱性が公表されたということなので、ログの Fix Versions を見て版を上げる。
+  # requirements-data.txt の cryptography は Windows ARM64 限定で既知脆弱性のある
+  # 46.0.3 に固定しているが(理由は requirements-data.txt のコメント)、このジョブは
+  # ubuntu-latest で走るので環境マーカーが偽になり、その固定は検査対象に入らない。
   #
   # continue-on-error は付けない。赤になることが検知の役目そのものだから
   # (付けてしまうと、脆弱性が増えても週次ワークフローが常に緑のままになり
@@ -71,17 +71,17 @@ jobs:
 
       - run: .venv/bin/python -c "import pandas, requests, openpyxl, pdfplumber"
 
-  # 同じ導入試験を Windows ARM64 で行う。開発機が Windows ARM64 であり、issue #45 が
-  # 「cryptography(pdfplumber → pdfminer.six の推移的依存)に win_arm64 wheel が無く
-  # ソースビルドに落ちて失敗する」ことを実測しているため、同じ環境でも回して継続的に見る。
+  # 同じ導入試験を Windows ARM64 で行う。開発機が Windows ARM64 であり、
+  # cryptography(pdfplumber → pdfminer.six の推移的依存)は 46.0.4 以降 win_arm64 の
+  # wheel を配布していない。requirements-data.txt が Windows ARM64 限定で 46.0.3 に
+  # 固定してインストールを通しているので(issue #45)、その固定が効き続けているかを
+  # 同じ環境で継続的に見る。
   install-test-windows-arm:
     runs-on: windows-11-arm
-    # このジョブは失敗しても週次ワークフロー全体を赤にしない。理由は2つ:
-    #   (a) この失敗自体が issue #45 で既知であり、既知の失敗で全体を赤にする意味がない
-    #   (b) windows-11-arm というランナーラベルがこのリポジトリで実際に使えるかを
-    #       実装時に確認できていない(docs.github.com がこの作業環境の egress
-    #       プロキシで遮断されていたため)。ラベルが使えなかった場合でも週次全体が
-    #       落ちないようにしておく
+    # このジョブは失敗しても週次ワークフロー全体を赤にしない(オーナー判断で据え置き)。
+    # 導入当初の理由(issue #45 の既知の失敗、windows-11-arm ラベルが使えるか未確認)は
+    # どちらも解消しており、2026-08-25〜09-29 の8回はすべて成功している。
+    # 全体が緑でもこのジョブだけ失敗していることがあるので、結果はジョブ単位で見ること。
     continue-on-error: true
     # cryptography に win_arm64 wheel が無い場合、pip はソースビルド(Rust)に落ちる。
     # 失敗するにせよ成功するにせよ長時間ランナーを占有しうるので上限を切っておく。
